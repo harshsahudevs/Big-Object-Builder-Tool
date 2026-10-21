@@ -1,58 +1,91 @@
-# Salesforce DX Project
+# Big Object Builder Tool
 
-Salesforce DX is a development approach that brings source-driven development, team collaboration, and continuous integration to the Salesforce Platform. Instead of working directly in an org through a web browser, you work with metadata as source files in a local DX project, track changes in version control, and deploy through automated processes.
+A no-code Salesforce app for creating and managing Big Objects. Define a Big Object with point-and-click, map data into it, and archive and retrieve records, all from one place.
 
-This project template gets you started with the tools and structure you need to build Salesforce applications using source control, scratch orgs, and the Salesforce CLI.
+> Personal project. Not an official Salesforce product.
 
-## Prerequisites
+## Why this exists
 
-Before you start, make sure you have:
+Big Objects are built for very large data volumes, but getting started is harder than it should be. Creating one usually means writing metadata by hand and making Metadata API calls, which keeps many teams from using them at all.
 
-- **Salesforce CLI** - Download from [developer.salesforce.com/tools/salesforcecli](https://developer.salesforce.com/tools/salesforcecli). See [Install Salesforce CLI](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_install_cli.htm) for details.
-- **VS Code with Salesforce Extension Pack** - See [Installation Instructions](https://developer.salesforce.com/docs/platform/sfvscode-extensions/guide/install.html) for details. Includes the Agentforce Vibes extension.
-- **A development org** - Sign up for a free Developer Edition org [here](https://developer.salesforce.com/signup).
-- **Dev Hub enabled** (optional, required to create scratch orgs) - You can enable Dev Hub in your development org under Setup > Dev Hub.  See [Provide Developers Access to Salesforce DX Tools](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_setup_dx_tools.htm).
+This tool puts those steps behind a guided interface, so a Big Object can be created without writing code.
 
-## Project Structure
+## Features
 
-Your DX project follows this structure:
+- **No-code creation:** define a Big Object (fields and index) through a point-and-click UI instead of writing metadata and Metadata API calls.
+- **Data mapping:** map data from [FILL: source, e.g. standard or custom objects] into a Big Object.
+- **Archive:** store data in a Big Object for long-term retention.
+- **Retrieve:** [FILL: how users query archived records, e.g. filtering on index fields].
+- **Modular design:** creation, mapping, archive and retrieval are separate modules inside one application. [FILL: confirm]
 
-- **`force-app/main/default/`** - Your metadata source files live in this default package directory. You can configure additional package directories in the `sfdx-project.json` file.
-- **`config/`** - Scratch org definitions and project settings
-- **`scripts/`** - Automation scripts for common tasks
-- **`sfdx-project.json`** - Project manifest that defines package directories, namespace, API version, and other project-level settings
+## Demo
 
-See [Salesforce DX Project Configuration](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_ws_config.htm).
+[FILL: add a short GIF or 3-4 screenshots: creating a Big Object, mapping, archive, retrieve]
 
-## Get Started
+## How it works
 
-Ready to start developing? The [Get Started with Salesforce DX](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/sfdx_dev_get_started_dx.htm) guide walks you through your first project, from creating a scratch org to creating a simple Apex class or LWC to deploying your code to a sandbox.
+The app is built with Apex, Lightning Web Components (LWC) and the Metadata API.
 
-## Common Salesforce CLI Commands
+[FILL: 3-5 lines on how the pieces connect, e.g. LWC UI -> Apex -> Metadata API]
 
-Here are common CLI commands that you'll use the most:
+## Getting started
 
-- `sf org login web`: Authorize an org
-- `sf org open`: Open your org in a browser
-- `sf org create scratch`: Create a scratch org
-- `sf project deploy start`: Deploy metadata to your org
-- `sf project retrieve start`: Retrieve metadata from your org
-- `sf template generate <artifact>`: Scaffold new components, such as Apex classes and triggers, LWC components, Lightning apps, and more
-- `sf apex <command>`: Run Apex tests, run anonymous Apex blocks, and view logs
-- `sf data <command>`: Work with test data
-- `sf alias <command>`: Manage org aliases
-- `sf config <command>`: Configure CLI settings
+### Prerequisites
 
-## Use Agentforce Vibes to Build Lightning Apps
+- [Salesforce CLI](https://developer.salesforce.com/tools/salesforcecli)
+- Node.js (for linting and LWC Jest tests)
+- VS Code with the Salesforce Extension Pack (optional)
+- A Salesforce org. A free [Developer Edition](https://developer.salesforce.com/signup) works.
 
-Transform your ideas into custom Lightning apps that extend CRM workflows directly in Lightning Experience. Through natural conversations with Agentforce Vibes, implement custom objects and fields, complex business logic, and dynamic UI components. See [Build a Lightning App Using Agentforce Vibes](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/lexapp-overview.html).
+### Setup
 
-## Additional Resources
+```bash
+git clone https://github.com/harshsahudevs/Big-Object-Builder-Tool.git
+cd Big-Object-Builder-Tool
+npm install
+sf org login web --alias bigobject-dev
+sf project deploy start --target-org bigobject-dev
+```
 
-- [Agentforce Vibes Developer Guide](https://developer.salesforce.com/docs/platform/einstein-for-devs/guide/einstein-overview.html)
-- [Salesforce CLI Installation Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_setup.meta/sfdx_setup/sfdx_setup_intro.htm)
-- [Salesforce DX Developer Guide](https://developer.salesforce.com/docs/atlas.en-us.sfdx_dev.meta/sfdx_dev/)
-- [Salesforce CLI Command Reference](https://developer.salesforce.com/docs/atlas.en-us.sfdx_cli_reference.meta/sfdx_cli_reference/)
-- [Salesforce CLI Plugin Development Guide](https://developer.salesforce.com/docs/platform/salesforce-cli-plugin/guide/conceptual-overview.html)
-- [Salesforce VS Code Extensions Documentation](https://developer.salesforce.com/tools/vscode/)
+Then assign [FILL: permission set name] to your user and open [FILL: app name] from the App Launcher.
 
+## Usage
+
+1. [FILL: open the app and start a new Big Object]
+2. [FILL: define fields and the index]
+3. [FILL: map source data]
+4. [FILL: archive and retrieve records]
+
+## Good to know
+
+- The index of a Big Object cannot be changed after the object is created, so plan your index fields before deploying.
+- [FILL: tool-specific limitations, e.g. supported field types]
+
+## Project structure
+
+```
+force-app/main/default/   Apex classes, LWC and other metadata
+config/                   Scratch org definition
+scripts/                  Helper scripts
+sfdx-project.json         Project manifest
+```
+
+## Testing
+
+```bash
+npm run test:unit
+npm run lint
+sf apex run test --test-level RunLocalTests --target-org bigobject-dev --code-coverage --result-format human
+```
+
+## Tech stack
+
+Apex, Lightning Web Components, Salesforce Metadata API, Salesforce DX, Jest, ESLint, Prettier.
+
+## Author
+
+Harsh Sahu - [LinkedIn](https://www.linkedin.com/in/harshsahudev/)
+
+## License
+
+[FILL: e.g. MIT, and add a LICENSE file to the repo]
