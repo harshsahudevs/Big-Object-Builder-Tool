@@ -15,18 +15,14 @@ This tool puts those steps behind a guided interface, so a Big Object can be cre
 - **No-code creation:** define a Big Object (fields and index) through a point-and-click UI instead of writing metadata and Metadata API calls.
 - **Data mapping:** map data from [FILL: source, e.g. standard or custom objects] into a Big Object.
 - **Archive:** store data in a Big Object for long-term retention.
-- **Retrieve:** [FILL: how users query archived records, e.g. filtering on index fields].
+- **Retrieve:** retrieve records from big objects.
 - **Modular design:** creation, mapping, archive and retrieval are separate modules inside one application. [FILL: confirm]
 
-## Demo
-
-[FILL: add a short GIF or 3-4 screenshots: creating a Big Object, mapping, archive, retrieve]
 
 ## How it works
 
 The app is built with Apex, Lightning Web Components (LWC) and the Metadata API.
 
-[FILL: 3-5 lines on how the pieces connect, e.g. LWC UI -> Apex -> Metadata API]
 
 ## Getting started
 
@@ -47,13 +43,13 @@ sf org login web --alias bigobject-dev
 sf project deploy start --target-org bigobject-dev
 ```
 
-Then assign [FILL: permission set name] to your user and open [FILL: app name] from the App Launcher.
+
 
 
 ## Good to know
 
 - The index of a Big Object cannot be changed after the object is created, so plan your index fields before deploying.
-- [FILL: tool-specific limitations, e.g. supported field types]
+
 
 ## Project structure
 
@@ -80,6 +76,3 @@ Apex, Lightning Web Components, Salesforce Metadata API, Salesforce DX, Jest, ES
 
 Harsh Sahu - [LinkedIn](https://www.linkedin.com/in/harshsahudev/)
 
-## License
-
-[FILL: e.g. MIT, and add a LICENSE file to the repo]
