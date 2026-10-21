@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Default_Criteria__c</fullName>
+    <label>Default Criteria</label>
+    <description>Optional default SOQL WHERE fragment used to pre-filter records eligible for archiving (e.g. Status = 'Closed' AND CreatedDate &lt; LAST_N_DAYS:365).</description>
+    <inlineHelpText>SOQL filter fragment, without the WHERE keyword.</inlineHelpText>
+    <type>TextArea</type>
+</CustomField>

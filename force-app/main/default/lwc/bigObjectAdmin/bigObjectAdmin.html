@@ -1,0 +1,102 @@
+<template>
+    <lightning-card title="Big Object Admin" icon-name="standard:settings">
+        <div slot="actions" class="slds-grid slds-grid_vertical-align-center">
+            <span class="slds-text-body_small slds-text-color_weak slds-m-right_small">Last refreshed: {lastRefreshedLabel}</span>
+            <lightning-button-icon icon-name="utility:refresh" alternative-text="Reload" title="Reload" onclick={handleReload}></lightning-button-icon>
+        </div>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template if:true={isRefreshing}>
+                <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
+            </template>
+
+            <template if:true={errorMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_error slds-m-bottom_small" role="alert">
+                    <lightning-icon icon-name="utility:error" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                    {errorMessage}
+                </div>
+            </template>
+
+            <!-- KPI stat tiles -->
+            <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Big Objects</p>
+                        <p class="slds-text-heading_large">{totalBigObjects}</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Archived (approx)</p>
+                        <p class="slds-text-heading_large">{totalArchived}</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Failed Archives</p>
+                        <p class="slds-text-heading_large">
+                            <span class={failedTextClass}>{failedCount}</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Usage</p>
+                        <p class="slds-text-heading_large">{usagePercent}%</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Usage vs limit meter -->
+            <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_x-small">
+                    <span class="slds-text-title_caps slds-text-color_weak">Org Usage vs Limit</span>
+                    <span class={usageBadgeClass}>{usageStatus.label}</span>
+                </div>
+                <lightning-progress-bar value={usagePercent} size="large"></lightning-progress-bar>
+                <p class="slds-text-body_small slds-text-color_weak slds-p-top_x-small">{usageLabel}</p>
+            </div>
+
+            <!-- Recent activity -->
+            <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                <h2 class="slds-text-heading_small slds-m-bottom_x-small">Recent Archive &amp; Restore Activity</h2>
+                <template if:true={activity.length}>
+                    <lightning-datatable
+                        key-field="id"
+                        data={activity}
+                        columns={activityColumns}
+                        hide-checkbox-column="true"
+                    ></lightning-datatable>
+                </template>
+                <template if:true={showNoActivity}>
+                    <p class="slds-text-body_regular slds-text-color_weak slds-p-around_small">No activity recorded yet.</p>
+                </template>
+            </div>
+
+            <!-- Big Object inventory -->
+            <div class="slds-box slds-box_x-small">
+                <div class="slds-grid slds-grid_align-spread slds-m-bottom_x-small">
+                    <h2 class="slds-text-heading_small">Big Objects Inventory</h2>
+                    <lightning-button
+                        label="Refresh Counts"
+                        icon-name="utility:refresh"
+                        onclick={handleRefreshCounts}
+                        disabled={isRefreshing}
+                    ></lightning-button>
+                </div>
+                <template if:true={inventory.length}>
+                    <lightning-datatable
+                        key-field="apiName"
+                        data={inventory}
+                        columns={inventoryColumns}
+                        hide-checkbox-column="true"
+                        onrowaction={handleInventoryRowAction}
+                    ></lightning-datatable>
+                </template>
+                <template if:true={showNoInventory}>
+                    <p class="slds-text-body_regular slds-text-color_weak slds-p-around_small">No Big Objects found. Create one with the Big Object Configurator.</p>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+</template>

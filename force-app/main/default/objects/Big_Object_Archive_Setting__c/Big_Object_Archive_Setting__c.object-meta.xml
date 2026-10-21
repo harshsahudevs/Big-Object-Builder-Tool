@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>List</customSettingsType>
+    <label>Big Object Archive Setting</label>
+    <description>Per-source-object archive configuration keyed by object API name (the Name field): whether archiving is enabled, the target Big Object, an optional per-object auto-delete override, and a default archive criteria filter. Edited by admins in the dashboard.</description>
+    <visibility>Public</visibility>
+</CustomObject>

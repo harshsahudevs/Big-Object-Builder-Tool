@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>The Big Object Archive Log object records every attempt to archive a source record into a Big Object. It captures the Source Record Id, Source Object, Target Big Object, Status (Success/Failed), Error Message, and who archived it. Commonly used for audit, troubleshooting failed archives, and reporting archive volumes.</description>
+    <enableReports>true</enableReports>
+    <enableSearch>true</enableSearch>
+    <label>Big Object Archive Log</label>
+    <pluralLabel>Big Object Archive Logs</pluralLabel>
+    <nameField>
+        <label>Archive Log Number</label>
+        <type>AutoNumber</type>
+        <displayFormat>BOAL-{000000}</displayFormat>
+        <startingNumber>1</startingNumber>
+    </nameField>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

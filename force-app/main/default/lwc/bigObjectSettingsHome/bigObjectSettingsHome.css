@@ -1,0 +1,9 @@
+:host {
+    display: block;
+}
+
+/* Soften the nested child cards so the two sections read as one organised panel. */
+lightning-accordion-section lightning-card {
+    --slds-c-card-shadow: none;
+    box-shadow: none;
+}

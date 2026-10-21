@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Archived_By__c</fullName>
+    <label>Archived By</label>
+    <description>The user who ran the archive. Set from the running user at archive time.</description>
+    <inlineHelpText>User who performed the archive operation.</inlineHelpText>
+    <type>Lookup</type>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Big Object Archive Logs</relationshipLabel>
+    <relationshipName>Big_Object_Archive_Logs</relationshipName>
+    <required>false</required>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

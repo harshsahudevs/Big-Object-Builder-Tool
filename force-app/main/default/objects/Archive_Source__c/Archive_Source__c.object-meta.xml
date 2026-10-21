@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>The Archive Source object is a test fixture that stands in for any record archived into a Big Object. It holds a Record Key and Amount plus Is Archived, Archived Date, Archived By, and Record Key tracking fields. Commonly used to exercise the archive, stamping, and restore engine.</description>
+    <label>Archive Source</label>
+    <pluralLabel>Archive Sources</pluralLabel>
+    <nameField>
+        <label>Archive Source Name</label>
+        <type>Text</type>
+    </nameField>
+    <sharingModel>ReadWrite</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

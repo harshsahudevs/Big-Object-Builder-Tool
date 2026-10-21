@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Auto_Delete_Source__c</fullName>
+    <label>Auto Delete Source</label>
+    <description>Global master switch allowing the archive engine to delete the source record after a successful archive. Dangerous; off by default and intended to be controlled by admins.</description>
+    <inlineHelpText>When on, archived source records may be deleted automatically. Leave off unless you are certain.</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

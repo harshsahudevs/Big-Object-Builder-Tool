@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Auto_Delete_Source__c</fullName>
+    <label>Auto Delete Source</label>
+    <description>Per-object override allowing deletion of the source record after a successful archive. Effective only when the global Auto Delete Source master switch is also on.</description>
+    <inlineHelpText>Delete this object's source records after archiving. Requires the global toggle to also be on.</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

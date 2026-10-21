@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Count__c</fullName>
+    <label>Record Count</label>
+    <description>Last computed approximate number of records in this Big Object, derived from successful archive log entries.</description>
+    <inlineHelpText>Approximate count as of the last refresh.</inlineHelpText>
+    <type>Number</type>
+    <precision>18</precision>
+    <scale>0</scale>
+</CustomField>

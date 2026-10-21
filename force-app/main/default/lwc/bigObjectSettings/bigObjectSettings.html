@@ -1,0 +1,102 @@
+<template>
+    <div class="slds-is-relative">
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+        </template>
+
+        <template if:false={embedded}>
+            <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                Map a source object's fields to a Big Object's fields. These mappings are used when
+                archiving; any field left unmapped falls back to automatic name matching.
+            </p>
+        </template>
+
+        <!-- Big Object picker (standalone only) -->
+        <template if:true={showBigObjectList}>
+            <div class="slds-form-element slds-m-bottom_small">
+                <span class="slds-form-element__label slds-text-title_caps">Big Object</span>
+                <div class="slds-grid slds-wrap slds-gutters_x-small">
+                    <template for:each={bigObjects} for:item="bo">
+                        <div key={bo.apiName} class="slds-col slds-m-bottom_x-small">
+                            <lightning-button
+                                label={bo.label}
+                                data-id={bo.apiName}
+                                variant={bo.variant}
+                                onclick={handleSelectBigObject}
+                            ></lightning-button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </template>
+        <template if:true={showNoBigObjects}>
+            <p class="slds-text-color_weak slds-m-bottom_small">
+                No Big Objects found. Create one with the Big Object Configurator first.
+            </p>
+        </template>
+
+        <!-- Mapping editor -->
+        <template if:true={showEditor}>
+            <div class="slds-box slds-box_x-small">
+                <h3 class="slds-text-heading_small slds-m-bottom_x-small">
+                    Mapping for {selectedBigObject}
+                </h3>
+                <lightning-combobox
+                    label="Source Object"
+                    placeholder="Select the object to archive from..."
+                    options={sourceObjectOptions}
+                    value={selectedSourceObject}
+                    onchange={handleSourceChange}
+                    class="slds-m-bottom_small"
+                ></lightning-combobox>
+
+                <template if:true={showMappingRows}>
+                    <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">
+                        {mappingSummary}
+                    </p>
+
+                    <!-- column headers -->
+                    <div class="slds-grid slds-gutters_x-small slds-border_bottom slds-p-bottom_xx-small slds-m-bottom_x-small">
+                        <div class="slds-col slds-size_1-of-2">
+                            <span class="slds-text-title_caps">Big Object Field</span>
+                        </div>
+                        <div class="slds-col slds-size_1-of-2">
+                            <span class="slds-text-title_caps">Source Field</span>
+                        </div>
+                    </div>
+
+                    <template for:each={mappingRows} for:item="row">
+                        <div key={row.bigObjectField}
+                            class="slds-grid slds-gutters_x-small slds-grid_vertical-align-center slds-m-bottom_x-small">
+                            <div class="slds-col slds-size_1-of-2">
+                                <span class="slds-text-body_regular">{row.bigObjectLabel}</span>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">
+                                <lightning-combobox
+                                    label="Source field"
+                                    variant="label-hidden"
+                                    data-id={row.bigObjectField}
+                                    options={sourceFieldOptions}
+                                    value={row.sourceField}
+                                    onchange={handleMappingChange}
+                                ></lightning-combobox>
+                            </div>
+                        </div>
+                    </template>
+
+                    <div class="slds-m-top_small">
+                        <lightning-button
+                            variant="brand"
+                            label="Save Mappings"
+                            onclick={handleSave}
+                            disabled={isSaveDisabled}
+                        ></lightning-button>
+                        <template if:true={isSaving}>
+                            <lightning-spinner alternative-text="Saving" size="small"></lightning-spinner>
+                        </template>
+                    </div>
+                </template>
+            </div>
+        </template>
+    </div>
+</template>

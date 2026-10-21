@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Is_Archived__c</fullName>
+    <label>Is Archived</label>
+    <description>Set to true by the archive engine once this record has been archived into a Big Object.</description>
+    <inlineHelpText>Checked automatically when the record is archived.</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

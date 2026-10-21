@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<LightningComponentBundle xmlns="http://soap.sforce.com/2006/04/metadata">
+    <apiVersion>67.0</apiVersion>
+    <isExposed>true</isExposed>
+    <masterLabel>Archived Records Related List</masterLabel>
+    <description>Shows a record's archive history (when, to which Big Object, status, by whom). Zero configuration — drop it on any record page.</description>
+    <targets>
+        <target>lightning__RecordPage</target>
+    </targets>
+    <targetConfigs>
+        <targetConfig targets="lightning__RecordPage">
+            <property
+                name="title"
+                type="String"
+                label="Card Title"
+                default="Archived Records"
+            />
+            <!-- Legacy properties: no longer used (component is now zero-config). Kept so existing
+                 record pages that reference them continue to deploy. Safe to leave blank. -->
+            <property
+                name="bigObjectApiName"
+                type="String"
+                label="Big Object API Name (legacy — not used)"
+            />
+            <property
+                name="relationshipField"
+                type="String"
+                label="Relationship Index Field (legacy — not used)"
+            />
+            <property
+                name="displayFieldsCsv"
+                type="String"
+                label="Display Fields CSV (legacy — not used)"
+            />
+            <property
+                name="pageSize"
+                type="Integer"
+                label="Page Size (legacy — not used)"
+            />
+        </targetConfig>
+    </targetConfigs>
+</LightningComponentBundle>

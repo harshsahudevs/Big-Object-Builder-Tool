@@ -1,0 +1,125 @@
+<template>
+    <lightning-card title="Manage Record Mapping" icon-name="standard:relationship">
+        <lightning-button
+            slot="actions"
+            label="Refresh"
+            icon-name="utility:refresh"
+            variant="neutral"
+            onclick={handleRefresh}
+        ></lightning-button>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium slds-is-relative">
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+
+            <template if:true={error}>
+                <div class="slds-box slds-box_x-small slds-theme_error slds-m-bottom_small">{error}</div>
+            </template>
+
+            <!-- Overview list -->
+            <template if:true={showList}>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Field mappings for every Big Object you've created. A Big Object is
+                    <strong>Mapped</strong> when all its fields point to a source field,
+                    <strong>Partial</strong> when some do, and <strong>Unmapped</strong> when none are set yet.
+                </p>
+
+                <template if:true={hasRows}>
+                    <!-- Summary strip -->
+                    <div class="slds-grid slds-wrap slds-gutters_small slds-m-bottom_medium">
+                        <div class="slds-col">
+                            <lightning-badge label={totalCount} icon-name="utility:database"></lightning-badge>
+                            <span class="slds-m-left_xx-small slds-text-body_small">Big Objects</span>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-icon icon-name="utility:success" variant="success" size="xx-small"></lightning-icon>
+                            <span class="slds-m-left_xx-small slds-text-body_small">{mappedCount} mapped</span>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-icon icon-name="utility:warning" variant="warning" size="xx-small"></lightning-icon>
+                            <span class="slds-m-left_xx-small slds-text-body_small">{partialCount} partial</span>
+                        </div>
+                        <div class="slds-col">
+                            <lightning-icon icon-name="utility:dash" size="xx-small"></lightning-icon>
+                            <span class="slds-m-left_xx-small slds-text-body_small">{unmappedCount} unmapped</span>
+                        </div>
+                    </div>
+
+                    <table class="slds-table slds-table_cell-buffer slds-table_bordered slds-table_striped">
+                        <thead>
+                            <tr class="slds-line-height_reset">
+                                <th scope="col"><div class="slds-truncate slds-text-title_caps" title="Big Object">Big Object</div></th>
+                                <th scope="col"><div class="slds-truncate slds-text-title_caps" title="Source Object">Source Object</div></th>
+                                <th scope="col"><div class="slds-truncate slds-text-title_caps" title="Fields Mapped">Fields Mapped</div></th>
+                                <th scope="col"><div class="slds-truncate slds-text-title_caps" title="Status">Status</div></th>
+                                <th scope="col" class="slds-text-align_right"><div class="slds-truncate slds-text-title_caps" title="Action">Action</div></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template for:each={rows} for:item="row">
+                                <tr key={row.apiName} class="slds-hint-parent">
+                                    <td data-label="Big Object">
+                                        <div class="slds-text-body_regular slds-truncate" title={row.label}>{row.label}</div>
+                                        <div class="slds-text-body_small slds-text-color_weak slds-truncate" title={row.apiName}>
+                                            {row.apiName}
+                                        </div>
+                                    </td>
+                                    <td data-label="Source Object">
+                                        <span class="slds-text-body_regular">{row.sourceDisplay}</span>
+                                    </td>
+                                    <td data-label="Fields Mapped">
+                                        <span class="slds-text-body_regular">{row.fieldsDisplay}</span>
+                                    </td>
+                                    <td data-label="Status">
+                                        <span class="slds-grid slds-grid_vertical-align-center">
+                                            <lightning-icon
+                                                icon-name={row.statusIcon}
+                                                variant={row.statusVariant}
+                                                size="xx-small"
+                                            ></lightning-icon>
+                                            <span class="slds-m-left_xx-small">{row.status}</span>
+                                        </span>
+                                    </td>
+                                    <td data-label="Action" class="slds-text-align_right">
+                                        <lightning-button
+                                            label="Manage"
+                                            variant="brand"
+                                            data-id={row.apiName}
+                                            data-source={row.sourceObject}
+                                            onclick={handleManage}
+                                        ></lightning-button>
+                                    </td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </template>
+
+                <template if:false={hasRows}>
+                    <div class="slds-illustration slds-illustration_small slds-p-around_medium slds-text-align_center">
+                        <lightning-icon icon-name="utility:info" size="small" class="slds-m-bottom_x-small"></lightning-icon>
+                        <p class="slds-text-color_weak">
+                            No Big Objects yet. Create one in the Configurator tab, then manage its mapping here.
+                        </p>
+                    </div>
+                </template>
+            </template>
+
+            <!-- Inline mapping editor for the selected Big Object -->
+            <template if:false={showList}>
+                <lightning-button
+                    label="Back to all mappings"
+                    icon-name="utility:back"
+                    variant="base"
+                    class="slds-m-bottom_small"
+                    onclick={handleBack}
+                ></lightning-button>
+                <c-big-object-settings
+                    preset-big-object={managingBigObject}
+                    preset-source-object={managingSource}
+                ></c-big-object-settings>
+            </template>
+        </div>
+    </lightning-card>
+</template>

@@ -1,0 +1,176 @@
+<template>
+    <div class="slds-is-relative slds-p-around_x-small">
+        <template if:true={isBusy}>
+            <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
+        </template>
+
+        <template if:true={errorMessage}>
+            <div class="slds-text-color_error slds-m-bottom_small">{errorMessage}</div>
+        </template>
+
+        <!-- Connection status -->
+        <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+            <div class="slds-grid slds-grid_vertical-align-center slds-wrap">
+                <lightning-icon icon-name={statusIcon} variant={statusIconVariant} size="small"
+                    class="slds-m-right_small"></lightning-icon>
+                <div class="slds-col slds-grow">
+                    <p class="slds-text-heading_small">{statusHeadline}</p>
+                    <template if:true={exists}>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-top_xxx-small">
+                            Named Credential: <strong>{namedCredentialName}</strong>
+                            <template if:true={endpoint}> &middot; {endpoint}</template>
+                        </p>
+                    </template>
+                </div>
+                <span class={statusTheme}>{statusLabel}</span>
+            </div>
+
+            <!-- Progress -->
+            <lightning-progress-indicator current-step={currentStep} type="base" class="slds-m-top_medium">
+                <lightning-progress-step label="Create Named Credential" value="create"></lightning-progress-step>
+                <lightning-progress-step label="Test Connection" value="test"></lightning-progress-step>
+                <lightning-progress-step label="Done" value="done"></lightning-progress-step>
+            </lightning-progress-indicator>
+
+            <!-- Actions -->
+            <div class="slds-grid slds-grid_vertical-align-center slds-wrap slds-m-top_medium">
+                <lightning-button label={testButtonLabel} variant="brand" icon-name="utility:connected_apps"
+                    onclick={handleTestConnection} disabled={testButtonDisabled}
+                    class="slds-m-right_x-small slds-m-bottom_xx-small"></lightning-button>
+                <lightning-button label="Re-check Connection" icon-name="utility:refresh" onclick={handleRecheck}
+                    disabled={isBusy} class="slds-m-right_x-small slds-m-bottom_xx-small"></lightning-button>
+                <template if:true={exists}>
+                    <lightning-button label="Disconnect" variant="destructive-text" icon-name="utility:clear"
+                        onclick={handleDisconnectClick} disabled={isDisconnectDisabled}
+                        class="slds-m-bottom_xx-small"></lightning-button>
+                </template>
+            </div>
+
+            <template if:true={showTestResult}>
+                <p class={testResultClass}>{lastTestMessage}</p>
+            </template>
+
+            <!-- Disconnect confirmation (non-destructive) -->
+            <template if:true={showDisconnectConfirm}>
+                <div class="slds-box slds-box_x-small slds-theme_shade slds-m-top_small">
+                    <p class="slds-text-body_small slds-m-bottom_x-small">
+                        Reset the connection for this session? The Named Credential
+                        <strong>{namedCredentialName}</strong> is <strong>kept</strong> in Setup — nothing is deleted.
+                    </p>
+                    <lightning-button label="Yes, disconnect" variant="destructive"
+                        onclick={handleDisconnectConfirm} class="slds-m-right_x-small"></lightning-button>
+                    <lightning-button label="Cancel" onclick={handleDisconnectCancel}></lightning-button>
+                </div>
+            </template>
+        </div>
+
+        <!-- Guided setup / reconfigure: 3 collapsible steps -->
+        <lightning-accordion active-section-name="step1" class="setup-accordion">
+            <!-- Step 1 -->
+            <lightning-accordion-section name="step1" label="Step 1 — Create an External Client App">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Create the OAuth app that issues the token. Copy these values into the new External Client App,
+                    then save and copy its <strong>Consumer Key</strong> and <strong>Consumer Secret</strong>.
+                </p>
+                <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-m-bottom_small">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th scope="col"><div class="slds-truncate">Field</div></th>
+                            <th scope="col"><div class="slds-truncate">Value</div></th>
+                            <th scope="col" class="slds-cell-shrink"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={step1Rows} for:item="row">
+                            <tr key={row.key}>
+                                <th scope="row" class="slds-text-color_weak"><div class="slds-truncate" title={row.label}>{row.label}</div></th>
+                                <td><div class="slds-truncate" title={row.value}>{row.value}</div></td>
+                                <td class="slds-cell-shrink">
+                                    <template if:true={row.copyable}>
+                                        <lightning-button-icon icon-name="utility:copy_to_clipboard"
+                                            alternative-text="Copy" title="Copy" variant="bare"
+                                            data-value={row.value} onclick={handleCopy}></lightning-button-icon>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <lightning-button label="Open External Client App Setup" icon-name="utility:new_window"
+                    icon-position="right" variant="brand-outline" data-url={externalClientAppUrl}
+                    onclick={handleOpenUrl}></lightning-button>
+            </lightning-accordion-section>
+
+            <!-- Step 2 -->
+            <lightning-accordion-section name="step2" label="Step 2 — Create an Auth Provider">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Create an Auth Provider that uses the app from Step 1, then copy its generated
+                    <strong>Callback URL</strong> back into the External Client App.
+                </p>
+                <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-m-bottom_small">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th scope="col"><div class="slds-truncate">Field</div></th>
+                            <th scope="col"><div class="slds-truncate">Value</div></th>
+                            <th scope="col" class="slds-cell-shrink"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={step2Rows} for:item="row">
+                            <tr key={row.key}>
+                                <th scope="row" class="slds-text-color_weak"><div class="slds-truncate" title={row.label}>{row.label}</div></th>
+                                <td><div class="slds-truncate" title={row.value}>{row.value}</div></td>
+                                <td class="slds-cell-shrink">
+                                    <template if:true={row.copyable}>
+                                        <lightning-button-icon icon-name="utility:copy_to_clipboard"
+                                            alternative-text="Copy" title="Copy" variant="bare"
+                                            data-value={row.value} onclick={handleCopy}></lightning-button-icon>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <lightning-button label="Open Auth Provider Setup" icon-name="utility:new_window"
+                    icon-position="right" variant="brand-outline" data-url={authProviderUrl}
+                    onclick={handleOpenUrl}></lightning-button>
+            </lightning-accordion-section>
+
+            <!-- Step 3 -->
+            <lightning-accordion-section name="step3" label="Step 3 — Create the Named Credential">
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Create the Named Credential using these values. The API name must be exactly
+                    <strong>Metadata_API</strong>. After saving, complete the OAuth login, then click
+                    <strong>Test Connection</strong> above.
+                </p>
+                <table class="slds-table slds-table_bordered slds-table_cell-buffer slds-m-bottom_small">
+                    <thead>
+                        <tr class="slds-text-title_caps">
+                            <th scope="col"><div class="slds-truncate">Field</div></th>
+                            <th scope="col"><div class="slds-truncate">Value</div></th>
+                            <th scope="col" class="slds-cell-shrink"></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <template for:each={configRows} for:item="row">
+                            <tr key={row.key}>
+                                <th scope="row" class="slds-text-color_weak"><div class="slds-truncate" title={row.label}>{row.label}</div></th>
+                                <td><div class="slds-truncate" title={row.value}>{row.value}</div></td>
+                                <td class="slds-cell-shrink">
+                                    <template if:true={row.copyable}>
+                                        <lightning-button-icon icon-name="utility:copy_to_clipboard"
+                                            alternative-text="Copy" title="Copy" variant="bare"
+                                            data-value={row.value} onclick={handleCopy}></lightning-button-icon>
+                                    </template>
+                                </td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+                <lightning-button label="Open Named Credential Setup" icon-name="utility:new_window"
+                    icon-position="right" variant="brand-outline" data-url={namedCredentialUrl}
+                    onclick={handleOpenUrl}></lightning-button>
+            </lightning-accordion-section>
+        </lightning-accordion>
+    </div>
+</template>

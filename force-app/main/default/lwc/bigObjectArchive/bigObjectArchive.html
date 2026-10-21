@@ -1,0 +1,109 @@
+<template>
+    <lightning-card title="Archive to Big Object" icon-name="utility:save">
+        <div class="slds-p-around_medium slds-is-relative">
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+
+            <template if:true={error}>
+                <div class="slds-box slds-box_x-small slds-theme_error slds-m-bottom_small">{error}</div>
+            </template>
+
+            <!-- No mapped Big Object for this object -->
+            <template if:true={noTargets}>
+                <div class="slds-text-align_center slds-p-vertical_small slds-text-color_weak">
+                    <lightning-icon icon-name="utility:info" size="small" class="slds-m-bottom_x-small"></lightning-icon>
+                    <p>
+                        No mapped Big Object found for <strong>{objectApiName}</strong>. Create one in the Configurator
+                        and map its fields in <strong>Manage Record Mapping</strong> before archiving.
+                    </p>
+                </div>
+            </template>
+
+            <!-- Archive / backup controls -->
+            <template if:true={hasTargets}>
+                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
+                    Choose a Big Object, then back up (keep this record) or archive it (remove this record).
+                </p>
+
+                <lightning-combobox
+                    label="Target Big Object"
+                    value={selectedBigObject}
+                    options={targets}
+                    onchange={handleBigObjectChange}
+                    disabled={isWorking}
+                    placeholder="Select a Big Object"
+                    class="slds-m-bottom_small"
+                ></lightning-combobox>
+
+                <!-- Partial-mapping warning -->
+                <template if:true={selectedIsPartial}>
+                    <div class="slds-box slds-box_xx-small slds-theme_warning slds-text-body_small slds-m-bottom_small">
+                        <lightning-icon icon-name="utility:warning" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                        This Big Object is only <strong>partially mapped</strong> — unmapped fields won't be saved.
+                        Complete its mapping in <strong>Manage Record Mapping</strong> for a full archive.
+                    </div>
+                </template>
+
+                <div class="slds-grid slds-gutters_x-small">
+                    <div class="slds-col slds-grow-none">
+                        <lightning-button
+                            label="Back up this record"
+                            icon-name="utility:copy"
+                            onclick={handleBackup}
+                            disabled={actionsDisabled}
+                        ></lightning-button>
+                    </div>
+                    <div class="slds-col slds-grow-none">
+                        <lightning-button
+                            variant="brand"
+                            label="Archive this record"
+                            icon-name="utility:save"
+                            onclick={handleArchiveClick}
+                            disabled={actionsDisabled}
+                        ></lightning-button>
+                    </div>
+                </div>
+
+                <template if:true={isWorking}>
+                    <lightning-spinner alternative-text="Working" size="small" class="slds-m-top_small"></lightning-spinner>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- Archive + delete confirmation modal -->
+    <template if:true={showConfirm}>
+        <section role="dialog" tabindex="-1" aria-modal="true" aria-labelledby="modal-heading"
+            class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 id="modal-heading" class="slds-modal__title slds-hyphenate">
+                        Archive &amp; delete this record?
+                    </h2>
+                </header>
+                <div class="slds-modal__content slds-p-around_medium">
+                    <p>
+                        This copies the record into <strong>{selectedBigObject}</strong> and then
+                        <strong>permanently deletes</strong> it from the source object. This can't be undone.
+                        To keep the record, use <strong>Back up this record</strong> instead.
+                    </p>
+                    <template if:true={isWorking}>
+                        <lightning-spinner alternative-text="Archiving" size="small" class="slds-m-top_small"></lightning-spinner>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Cancel" onclick={handleCancel} disabled={isWorking}></lightning-button>
+                    <lightning-button
+                        variant="destructive"
+                        label="Archive &amp; Delete"
+                        onclick={handleConfirm}
+                        disabled={actionsDisabled}
+                        class="slds-m-left_x-small"
+                    ></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

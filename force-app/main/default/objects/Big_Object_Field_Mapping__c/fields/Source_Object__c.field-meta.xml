@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Source_Object__c</fullName>
+    <label>Source Object</label>
+    <description>API name of the source object whose records are archived with this mapping.</description>
+    <inlineHelpText>The source object, e.g. Lead or Account.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

@@ -1,0 +1,7 @@
+:host {
+    display: block;
+}
+
+lightning-datatable {
+    --slds-c-datatable-row-hover-color-background: var(--slds-g-color-neutral-base-95, #f3f3f3);
+}

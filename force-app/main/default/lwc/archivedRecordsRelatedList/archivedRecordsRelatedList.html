@@ -1,0 +1,47 @@
+<template>
+    <lightning-card icon-name="standard:data_mapping" title={cardTitle}>
+        <lightning-button-icon
+            slot="actions"
+            icon-name="utility:refresh"
+            alternative-text="Refresh"
+            title="Refresh"
+            onclick={handleRefresh}
+            disabled={isLoading}
+        ></lightning-button-icon>
+
+        <div class="slds-is-relative slds-p-horizontal_small">
+            <template if:true={isLoading}>
+                <lightning-spinner alternative-text="Loading" size="small"></lightning-spinner>
+            </template>
+
+            <template if:true={errorMessage}>
+                <div class="slds-m-around_small">
+                    <lightning-icon icon-name="utility:error" variant="error" size="x-small"></lightning-icon>
+                    <span class="slds-m-left_x-small slds-text-color_error">{errorMessage}</span>
+                </div>
+            </template>
+
+            <template if:true={hasRows}>
+                <lightning-datatable
+                    key-field="id"
+                    data={rows}
+                    columns={columns}
+                    hide-checkbox-column
+                    resize-column-disabled
+                ></lightning-datatable>
+            </template>
+
+            <template if:true={showEmptyState}>
+                <div class="slds-align_absolute-center slds-p-vertical_large slds-text-color_weak">
+                    This record has not been archived yet.
+                </div>
+            </template>
+        </div>
+
+        <template if:true={lastRefreshedLabel}>
+            <div slot="footer" class="slds-text-body_small slds-text-color_weak">
+                {lastRefreshedLabel}
+            </div>
+        </template>
+    </lightning-card>
+</template>

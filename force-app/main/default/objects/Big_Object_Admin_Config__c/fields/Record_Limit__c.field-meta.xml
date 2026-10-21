@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Limit__c</fullName>
+    <label>Record Limit</label>
+    <description>The org's Big Object record allocation, used to compute usage-vs-limit on the admin dashboard. Default 1,000,000; raise it if your org has a Big Object add-on.</description>
+    <inlineHelpText>Total Big Object records your org is allowed to store.</inlineHelpText>
+    <type>Number</type>
+    <precision>18</precision>
+    <scale>0</scale>
+    <defaultValue>1000000</defaultValue>
+</CustomField>

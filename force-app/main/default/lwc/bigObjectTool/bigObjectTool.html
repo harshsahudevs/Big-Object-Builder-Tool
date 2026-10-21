@@ -1,0 +1,24 @@
+<template>
+    <!-- Setup gate: shown until the Named Credential is confirmed -->
+    <template if:false={isUnlocked}>
+        <template if:true={showGateMessage}>
+            <div class="slds-notify slds-notify_alert slds-theme_info slds-m-bottom_medium" role="status">
+                <lightning-icon icon-name="utility:lock" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                The Big Object Configurator is locked until Metadata API setup is complete. Finish the steps below to unlock it.
+            </div>
+        </template>
+        <c-big-object-setup-assistant onsetupcomplete={handleSetupComplete}></c-big-object-setup-assistant>
+    </template>
+
+    <!-- Unlocked: the main tool -->
+    <template if:true={isUnlocked}>
+        <lightning-tabset>
+            <lightning-tab label="Configurator">
+                <c-big-object-configurator></c-big-object-configurator>
+            </lightning-tab>
+            <lightning-tab label="Manage Record Mapping">
+                <c-big-object-mapping-manager></c-big-object-mapping-manager>
+            </lightning-tab>
+        </lightning-tabset>
+    </template>
+</template>

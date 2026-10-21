@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Archived_By__c</fullName>
+    <label>Archived By</label>
+    <description>User who archived this record, stamped by the archive engine.</description>
+    <inlineHelpText>Set automatically to the user who ran the archive.</inlineHelpText>
+    <type>Lookup</type>
+    <referenceTo>User</referenceTo>
+    <relationshipLabel>Archive Sources (Archived By)</relationshipLabel>
+    <relationshipName>Archive_Sources_Archived_By</relationshipName>
+    <required>false</required>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

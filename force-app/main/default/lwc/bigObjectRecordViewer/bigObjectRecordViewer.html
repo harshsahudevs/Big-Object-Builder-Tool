@@ -1,0 +1,201 @@
+<template>
+    <lightning-card title="Archived Records" icon-name="standard:data_streams">
+        <lightning-button
+            slot="actions"
+            label="Refresh"
+            icon-name="utility:refresh"
+            onclick={handleRefresh}
+            disabled={isLoadingRecords}
+            if:true={isObjectChosen}
+        ></lightning-button>
+
+        <div class="slds-var-p-horizontal_medium slds-var-p-bottom_medium">
+            <!-- Big Object picker -->
+            <lightning-combobox
+                name="bigObject"
+                label="Big Object"
+                placeholder="Select a Big Object to view its archived records"
+                options={bigObjectOptions}
+                value={selectedBigObject}
+                onchange={handleObjectChange}
+                disabled={isLoadingObjects}
+            ></lightning-combobox>
+
+            <!-- Error -->
+            <template if:true={errorMessage}>
+                <div
+                    class="slds-var-m-top_small slds-text-color_error"
+                    role="alert"
+                >
+                    <lightning-icon
+                        icon-name="utility:error"
+                        size="x-small"
+                        variant="error"
+                        class="slds-var-m-right_xx-small"
+                    ></lightning-icon>
+                    {errorMessage}
+                </div>
+            </template>
+
+            <!-- Toolbar -->
+            <template if:true={isObjectChosen}>
+                <div
+                    class="slds-grid slds-grid_align-spread slds-grid_vertical-align-center slds-var-m-top_medium slds-wrap"
+                >
+                    <div class="slds-text-body_small slds-text-color_weak">
+                        <span>{recordCountLabel}</span>
+                        <template if:true={lastRefreshedLabel}>
+                            <span class="slds-var-m-left_small">{lastRefreshedLabel}</span>
+                        </template>
+                    </div>
+                    <div class="slds-button-group" role="group">
+                        <lightning-button
+                            label={unarchiveSelectedLabel}
+                            icon-name="utility:undo"
+                            onclick={handleUnarchiveSelected}
+                            disabled={disableSelected}
+                        ></lightning-button>
+                        <lightning-button
+                            label="Unarchive All Records"
+                            variant="destructive-text"
+                            icon-name="utility:delete"
+                            onclick={handleUnarchiveAll}
+                            disabled={disableAll}
+                        ></lightning-button>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Data table -->
+            <div class="slds-var-m-top_small slds-is-relative viewer-table">
+                <template if:true={hasRows}>
+                    <lightning-datatable
+                        key-field="key"
+                        columns={columns}
+                        data={rows}
+                        onrowselection={handleRowSelection}
+                        onrowaction={handleRowAction}
+                        resize-column-disabled
+                    ></lightning-datatable>
+                </template>
+
+                <!-- Empty state -->
+                <template if:true={showEmptyState}>
+                    <div class="slds-illustration slds-illustration_small slds-var-p-around_large slds-align_absolute-center slds-text-align_center">
+                        <lightning-icon icon-name="utility:archive" size="large" class="slds-var-m-bottom_small"></lightning-icon>
+                        <h3 class="slds-text-heading_small">No archived records</h3>
+                        <p class="slds-text-body_regular slds-text-color_weak">
+                            This Big Object has no archived records to show.
+                        </p>
+                    </div>
+                </template>
+
+                <!-- Spinners -->
+                <template if:true={isLoadingRecords}>
+                    <lightning-spinner alternative-text="Loading records" size="medium"></lightning-spinner>
+                </template>
+                <template if:true={isWorking}>
+                    <lightning-spinner alternative-text="Unarchiving" size="medium"></lightning-spinner>
+                </template>
+            </div>
+        </div>
+    </lightning-card>
+
+    <!-- Confirmation modal -->
+    <template if:true={showConfirm}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="confirm-heading"
+            class="slds-modal slds-fade-in-open"
+        >
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 id="confirm-heading" class="slds-modal__title slds-hyphenate">
+                        Confirm Unarchive
+                    </h2>
+                </header>
+                <div class="slds-modal__content slds-var-p-around_medium">
+                    <p>{confirmMessage}</p>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Cancel"
+                        onclick={cancelConfirm}
+                        class="slds-var-m-right_x-small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Unarchive"
+                        variant="destructive"
+                        onclick={confirmUnarchive}
+                    ></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- Record detail modal: full field-by-field view of one archived record -->
+    <template if:true={showDetail}>
+        <section
+            role="dialog"
+            tabindex="-1"
+            aria-modal="true"
+            aria-labelledby="detail-heading"
+            class="slds-modal slds-fade-in-open slds-modal_medium"
+        >
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <lightning-button-icon
+                        icon-name="utility:close"
+                        variant="bare-inverse"
+                        onclick={closeDetail}
+                        alternative-text="Close"
+                        title="Close"
+                        class="slds-modal__close"
+                    ></lightning-button-icon>
+                    <h2 id="detail-heading" class="slds-modal__title slds-hyphenate">
+                        Archived record
+                    </h2>
+                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
+                        Full stored data for this record in {selectedBigObject}.
+                    </p>
+                </header>
+                <div class="slds-modal__content slds-var-p-around_medium">
+                    <dl class="slds-list_horizontal slds-wrap">
+                        <template for:each={detailFields} for:item="f">
+                            <dt
+                                key={f.key}
+                                class="slds-item_label slds-text-color_weak slds-size_1-of-3 slds-truncate slds-var-p-vertical_xx-small"
+                                title={f.label}
+                            >
+                                {f.label}
+                            </dt>
+                            <dd
+                                key={f.key}
+                                class="slds-item_detail slds-size_2-of-3 slds-var-p-vertical_xx-small"
+                            >
+                                {f.value}
+                            </dd>
+                        </template>
+                    </dl>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button
+                        label="Close"
+                        onclick={closeDetail}
+                        class="slds-var-m-right_x-small"
+                    ></lightning-button>
+                    <lightning-button
+                        label="Unarchive this record"
+                        variant="brand"
+                        icon-name="utility:undo"
+                        onclick={unarchiveFromDetail}
+                    ></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

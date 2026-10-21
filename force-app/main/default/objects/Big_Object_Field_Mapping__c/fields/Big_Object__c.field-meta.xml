@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Big_Object__c</fullName>
+    <label>Big Object</label>
+    <description>API name of the archive Big Object this mapping targets (ends in __b).</description>
+    <inlineHelpText>The destination Big Object, e.g. Lead_Archive__b.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

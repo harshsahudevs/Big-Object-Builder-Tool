@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Big_Object_Field__c</fullName>
+    <label>Big Object Field</label>
+    <description>API name of the field on the Big Object that receives the archived value.</description>
+    <inlineHelpText>The destination field on the Big Object, e.g. City__c.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+    <required>false</required>
+</CustomField>

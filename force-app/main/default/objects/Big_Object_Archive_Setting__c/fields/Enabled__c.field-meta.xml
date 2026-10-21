@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Enabled__c</fullName>
+    <label>Enabled</label>
+    <description>Whether archiving is enabled for this source object.</description>
+    <inlineHelpText>Turn on to allow records of this object to be archived.</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <deploymentStatus>Deployed</deploymentStatus>
+    <description>The Archive Record Big Object stores archived rows for the Big Object tool's test fixture. Record Key (required) forms its single-field index and Amount holds a sample value. Commonly used to exercise Big Object insertImmediate, querying, and restore paths in Apex tests.</description>
+    <indexes>
+        <fullName>Archive_Record_Index</fullName>
+        <label>Archive Record Index</label>
+        <fields>
+            <name>Record_Key__c</name>
+            <sortDirection>ASC</sortDirection>
+        </fields>
+    </indexes>
+    <label>Archive Record</label>
+    <pluralLabel>Archive Records</pluralLabel>
+</CustomObject>

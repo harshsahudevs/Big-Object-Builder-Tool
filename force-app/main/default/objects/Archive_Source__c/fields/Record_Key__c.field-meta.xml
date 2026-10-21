@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Key__c</fullName>
+    <label>Record Key</label>
+    <description>Stable business key copied into the Big Object index when this record is archived.</description>
+    <inlineHelpText>Unique key used to locate the archived row in the Big Object.</inlineHelpText>
+    <type>Text</type>
+    <length>100</length>
+    <required>false</required>
+    <unique>false</unique>
+</CustomField>

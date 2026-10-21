@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Target_Big_Object__c</fullName>
+    <label>Target Big Object</label>
+    <description>API name of the Big Object that records of this source object are archived into.</description>
+    <inlineHelpText>e.g. Case_Archive__b</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

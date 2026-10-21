@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <customSettingsType>Hierarchy</customSettingsType>
+    <label>Big Object Admin Config</label>
+    <description>Org-level configuration for the Big Object archiving tool: the record limit used for usage metrics and the global auto-delete-source toggle. Edited by admins; supports per-profile/per-user override.</description>
+    <visibility>Public</visibility>
+</CustomObject>

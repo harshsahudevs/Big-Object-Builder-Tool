@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Amount__c</fullName>
+    <label>Amount</label>
+    <description>Sample numeric value archived from the source record to verify field mapping and restore.</description>
+    <inlineHelpText>Archived amount value copied from the source record.</inlineHelpText>
+    <type>Number</type>
+    <precision>18</precision>
+    <scale>2</scale>
+    <required>false</required>
+    <unique>false</unique>
+</CustomField>

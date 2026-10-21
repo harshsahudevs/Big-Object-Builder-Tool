@@ -1,0 +1,245 @@
+<template>
+    <lightning-card title="Big Object Configurator" icon-name="standard:data_streams">
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <!-- Creating: prominent processing panel while the Big Object deploys -->
+            <template if:true={isCreating}>
+                <div class="slds-box slds-m-bottom_medium">
+                    <div class="slds-grid slds-grid_vertical-align-center slds-gutters_x-small">
+                        <div class="slds-col slds-grow-none spinner-slot slds-is-relative">
+                            <lightning-spinner alternative-text="Creating" size="small" variant="brand"></lightning-spinner>
+                        </div>
+                        <div class="slds-col">
+                            <p class="slds-text-heading_small">Creating Big Object “{bigObjectApiName}”…</p>
+                            <p class="slds-text-body_small slds-text-color_weak">
+                                Deploying metadata — this can take up to a minute. Please wait.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </template>
+
+            <!-- Done: success banner + inline field-mapping step for the new Big Object -->
+            <template if:true={showMapping}>
+                <div class="slds-box slds-box_x-small slds-theme_success slds-m-bottom_medium">
+                    <lightning-icon icon-name="utility:success" variant="inverse" size="x-small"
+                        class="slds-m-right_x-small"></lightning-icon>
+                    Big Object <strong>{createdBigObject}</strong> created. Now map its fields to the source
+                    object below, then Save.
+                </div>
+                <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                    <h2 class="slds-text-heading_small slds-m-bottom_x-small">Map fields</h2>
+                    <c-big-object-settings
+                        preset-big-object={createdBigObject}
+                        preset-source-object={createdSource}
+                    ></c-big-object-settings>
+                </div>
+                <lightning-button
+                    label="Create another Big Object"
+                    icon-name="utility:add"
+                    onclick={handleCreateAnother}
+                ></lightning-button>
+            </template>
+
+            <!-- Configure: the build steps -->
+            <template if:true={showConfigure}>
+                <!-- Step 1: choose a source object -->
+                <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                    <h2 class="slds-text-heading_small slds-m-bottom_x-small">1. Select an object</h2>
+
+                    <!-- Vertical flow so the dependency reads top-to-bottom: type -> search -> object -->
+                    <lightning-combobox
+                        name="objectType"
+                        label="Object Type"
+                        placeholder="Select a type"
+                        options={objectTypeOptions}
+                        value={objectType}
+                        onchange={handleObjectTypeChange}
+                        field-level-help="Choose Standard or Custom to load that set of objects."
+                        class="slds-m-bottom_small"
+                    ></lightning-combobox>
+
+                    <template if:true={objectType}>
+                        <lightning-input
+                            type="search"
+                            label="Search objects"
+                            placeholder="Type a name to filter…"
+                            value={objectSearch}
+                            onchange={handleObjectSearch}
+                            class="slds-m-bottom_small"
+                        ></lightning-input>
+
+                        <lightning-combobox
+                            name="object"
+                            label="Object"
+                            placeholder={objectPickerPlaceholder}
+                            options={objectOptions}
+                            value={selectedObject}
+                            onchange={handleObjectChange}
+                            disabled={isLoading}
+                        ></lightning-combobox>
+                        <template if:true={noObjectMatches}>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_xx-small">
+                                No objects match “{objectSearch}”.
+                            </p>
+                        </template>
+                    </template>
+
+                    <!-- Contextual loader so the field-describe delay is clearly visible -->
+                    <template if:true={isLoading}>
+                        <div class="slds-grid slds-grid_vertical-align-center slds-m-top_small">
+                            <div class="slds-col slds-grow-none spinner-slot slds-is-relative">
+                                <lightning-spinner alternative-text="Loading fields" size="small"
+                                    variant="brand"></lightning-spinner>
+                            </div>
+                            <div class="slds-col slds-m-left_small slds-text-body_small slds-text-color_weak">
+                                Loading fields for <strong>{selectedObject}</strong>…
+                            </div>
+                        </div>
+                    </template>
+                </div>
+
+                <!-- Step 2: choose fields -->
+                <template if:true={fields.length}>
+                    <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                        <h2 class="slds-text-heading_small slds-m-bottom_x-small">2. Select fields for the Big Object</h2>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">
+                            All archivable fields are <strong>selected by default</strong> so the whole record is
+                            archived — deselect any you don't want. Fields without a native Big Object type
+                            (Picklist, Checkbox, Date, Multi-select) are stored as text under <em>Stored As</em>
+                            and converted back on unarchive.
+                        </p>
+                        <div class="slds-grid slds-grid_align-end slds-m-bottom_x-small">
+                            <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+                                <lightning-combobox
+                                    name="fieldFilter"
+                                    label="Show"
+                                    value={fieldFilter}
+                                    options={fieldFilterOptions}
+                                    onchange={handleFilterChange}
+                                ></lightning-combobox>
+                            </div>
+                        </div>
+                        <lightning-datatable
+                            key-field="apiName"
+                            data={visibleFields}
+                            columns={fieldColumns}
+                            selected-rows={selectedRowKeys}
+                            onrowselection={handleFieldSelection}
+                        ></lightning-datatable>
+
+                        <!-- Required fields auto-included so unarchive can recreate the record -->
+                        <template if:true={hasAutoIncludedRequired}>
+                            <div class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                <lightning-icon icon-name="utility:info" size="xx-small"
+                                    class="slds-m-right_xx-small"></lightning-icon>
+                                Required fields auto-included (needed to recreate the record on unarchive):
+                                <strong>{autoIncludedRequiredLabel}</strong>. These stay selected.
+                            </div>
+                        </template>
+                        <template if:true={hasCoercedSelected}>
+                            <div class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                <lightning-icon icon-name="utility:change_record_type" size="xx-small"
+                                    class="slds-m-right_xx-small"></lightning-icon>
+                                Stored as text, restored to type on unarchive: <strong>{coercedSelectedLabel}</strong>.
+                            </div>
+                        </template>
+                        <template if:true={hasRequiredUnsupported}>
+                            <div class="slds-box slds-box_xx-small slds-theme_warning slds-m-top_x-small slds-text-body_small">
+                                ⚠ These fields are required by the source object but can't be stored in a
+                                Big Object, so unarchived records may fail to save:
+                                <strong>{requiredUnsupportedLabel}</strong>.
+                            </div>
+                        </template>
+                    </div>
+                </template>
+
+                <!-- Step 3: configure each selected field + the index -->
+                <template if:true={selectedFields.length}>
+                    <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                        <h2 class="slds-text-heading_small slds-m-bottom_x-small">3. Configure Big Object fields &amp; index</h2>
+                        <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_x-small">
+                            For each selected field set the Big Object label and API name (defaults are pre-filled), and
+                            choose 1–5 index fields (created as required). LongTextArea and URL fields can't be indexed.
+                            Combined index length (Text + Email 80 + Phone 40):
+                            <span class={indexLengthClass}>{combinedIndexLength}</span> / 100.
+                        </p>
+
+                        <template for:each={fieldRows} for:item="row">
+                            <div key={row.apiName} class="slds-box slds-box_xx-small slds-m-bottom_x-small">
+                                <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_xx-small">
+                                    {row.sourceInfo}
+                                </p>
+                                <div class="slds-grid slds-gutters_x-small slds-wrap slds-grid_vertical-align-end">
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                        <lightning-input
+                                            label="Big Object Label"
+                                            data-id={row.apiName}
+                                            value={row.boLabel}
+                                            onchange={handleBoLabelChange}
+                                        ></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-1 slds-medium-size_1-of-3">
+                                        <lightning-input
+                                            label="Big Object API Name"
+                                            data-id={row.apiName}
+                                            value={row.boApiName}
+                                            field-level-help="Must end with __c"
+                                            onchange={handleBoApiNameChange}
+                                        ></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                                        <lightning-input
+                                            type="checkbox"
+                                            label={row.indexToggleLabel}
+                                            data-id={row.apiName}
+                                            checked={row.included}
+                                            disabled={row.indexDisabled}
+                                            onchange={handleIndexToggle}
+                                        ></lightning-input>
+                                    </div>
+                                    <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-6">
+                                        <lightning-combobox
+                                            label="Sort direction"
+                                            data-id={row.apiName}
+                                            options={sortOptions}
+                                            value={row.sortDirection}
+                                            disabled={row.sortDisabled}
+                                            onchange={handleSortChange}
+                                        ></lightning-combobox>
+                                    </div>
+                                </div>
+                            </div>
+                        </template>
+                    </div>
+
+                    <!-- Step 4: name the Big Object -->
+                    <div class="slds-box slds-box_x-small slds-m-bottom_medium">
+                        <h2 class="slds-text-heading_small slds-m-bottom_x-small">4. Name the Big Object</h2>
+                        <lightning-input label="Label" value={bigObjectLabel} onchange={handleLabelChange}></lightning-input>
+                        <lightning-input label="Plural Label" value={bigObjectPluralLabel} onchange={handlePluralChange}></lightning-input>
+                        <lightning-input label="API Name" value={bigObjectApiName} onchange={handleApiNameChange}
+                            field-level-help="Must end with __b"></lightning-input>
+                    </div>
+
+                    <!-- validation summary -->
+                    <template if:true={hasValidationErrors}>
+                        <div class="slds-box slds-box_x-small slds-theme_warning slds-m-bottom_medium">
+                            <ul class="slds-list_dotted">
+                                <template for:each={validationErrors} for:item="err">
+                                    <li key={err}>{err}</li>
+                                </template>
+                            </ul>
+                        </div>
+                    </template>
+
+                    <lightning-button
+                        variant="brand"
+                        label="Create Big Object"
+                        onclick={handleSubmit}
+                        disabled={isSubmitDisabled}
+                    ></lightning-button>
+                </template>
+            </template>
+        </div>
+    </lightning-card>
+</template>

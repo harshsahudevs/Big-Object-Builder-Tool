@@ -1,0 +1,15 @@
+.slds-box_x-small {
+    padding: var(--slds-g-spacing-4, 0.75rem);
+    height: 100%;
+}
+
+.slds-text-heading_large {
+    font-weight: 700;
+}
+
+/* Keep KPI tiles comfortable on small viewports */
+@media (max-width: 48em) {
+    .slds-text-heading_large {
+        font-size: 1.5rem;
+    }
+}

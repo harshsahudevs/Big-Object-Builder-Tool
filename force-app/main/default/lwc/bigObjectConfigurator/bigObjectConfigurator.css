@@ -1,0 +1,14 @@
+.slds-box_x-small {
+    padding: var(--slds-g-spacing-4, 0.75rem);
+    border-radius: var(--slds-g-radius-border-2, 0.25rem);
+}
+
+h2.slds-text-heading_small {
+    font-weight: 700;
+}
+
+/* Fixed-size slot so the inline "creating" spinner renders contained, not as a full overlay. */
+.spinner-slot {
+    width: 2rem;
+    height: 2rem;
+}
