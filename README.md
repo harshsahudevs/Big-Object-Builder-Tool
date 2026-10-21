@@ -49,12 +49,6 @@ sf project deploy start --target-org bigobject-dev
 
 Then assign [FILL: permission set name] to your user and open [FILL: app name] from the App Launcher.
 
-## Usage
-
-1. [FILL: open the app and start a new Big Object]
-2. [FILL: define fields and the index]
-3. [FILL: map source data]
-4. [FILL: archive and retrieve records]
 
 ## Good to know
 
