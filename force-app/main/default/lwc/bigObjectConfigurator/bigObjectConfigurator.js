@@ -301,9 +301,34 @@ export default class BigObjectConfigurator extends LightningElement {
         this.indexConfig = { ...this.indexConfig };
     }
 
-    // Default Big Object field API name: every Big Object field must be custom (__c).
+    // Default Big Object field API name (always a valid, local custom name).
     defaultBoApiName(sourceApiName) {
-        return sourceApiName.endsWith('__c') ? sourceApiName : `${sourceApiName}__c`;
+        return this.sanitizeName(sourceApiName, '__c');
+    }
+
+    /**
+     * Turns any raw string into a deploy-safe Salesforce DeveloperName with the given suffix
+     * ('__b' / '__c'). Handles: spaces/punctuation -> '_', managed-package namespaces and any
+     * double underscores collapsed (pi__score -> pi_score), leading digits/underscores stripped,
+     * trailing underscores stripped, 40-char cap. Deterministic, so the LWC and Apex agree.
+     */
+    sanitizeName(raw, suffix) {
+        let s = (raw || '').trim();
+        if (suffix && s.toLowerCase().endsWith(suffix.toLowerCase())) {
+            s = s.slice(0, s.length - suffix.length);
+        }
+        s = s
+            .replace(/[^A-Za-z0-9_]/g, '_')
+            .replace(/_+/g, '_')
+            .replace(/^[_0-9]+/, '')
+            .replace(/_+$/, '');
+        if (!s) {
+            s = 'X';
+        }
+        if (s.length > 40) {
+            s = s.slice(0, 40).replace(/_+$/, '');
+        }
+        return `${s}${suffix || ''}`;
     }
 
     // ---- field configuration (label / API name / index) --------------------
@@ -506,7 +531,26 @@ export default class BigObjectConfigurator extends LightningElement {
         return this.validationErrors.length > 0;
     }
 
+    // Sanitize the Big Object API name and every field's Big Object API name, then de-duplicate the
+    // field names (two different source names can collapse to the same valid name).
+    normalizeNames() {
+        this.bigObjectApiName = this.sanitizeName(this.bigObjectApiName, '__b');
+        const used = new Set();
+        this.selectedFields.forEach((f) => {
+            const custom = this.fieldCustom[f.apiName] || {};
+            let name = this.sanitizeName(custom.boApiName || this.defaultBoApiName(f.apiName), '__c');
+            name = this.uniqueBoApiName(name, used);
+            used.add(name.toLowerCase());
+            this.fieldCustom[f.apiName] = { ...custom, boApiName: name };
+        });
+        this.fieldCustom = { ...this.fieldCustom };
+    }
+
     handleSubmit() {
+        // Normalize every generated name BEFORE validating/building the payload, so any label or
+        // typo (spaces, namespaces, leading digits, long names) still produces a deployable request.
+        this.normalizeNames();
+
         if (this.validationErrors.length) {
             this.showToast('Cannot submit', this.validationErrors.join(' '), 'warning');
             return;

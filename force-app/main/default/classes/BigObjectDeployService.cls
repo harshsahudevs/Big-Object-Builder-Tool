@@ -19,9 +19,37 @@ public with sharing class BigObjectDeployService {
         @AuraEnabled public String message;
     }
 
-    /** Every Big Object field must be custom (end in __c); standard source fields get a __c suffix. */
+    /** Every Big Object field must be a deploy-safe local custom (__c) name. */
+    @TestVisible
     private static String toBigObjectFieldName(String sourceApiName) {
-        return sourceApiName.endsWith('__c') ? sourceApiName : sourceApiName + '__c';
+        return sanitizeApiName(sourceApiName, '__c');
+    }
+
+    /**
+     * Turns any raw string into a deploy-safe Salesforce DeveloperName with the given suffix
+     * ('__b'/'__c'). Invalid chars -> '_', consecutive '_' collapsed (so managed-package namespaces
+     * like pi__score and accidental double underscores both normalize), leading digits/underscores
+     * and trailing underscores stripped, blank -> 'X', 40-char base cap. Idempotent + deterministic,
+     * so this (Apex) and the LWC's sanitizeName agree on the final name.
+     */
+    @TestVisible
+    private static String sanitizeApiName(String raw, String suffix) {
+        String s = (raw == null) ? '' : raw.trim();
+        if (suffix != null && s.length() >= suffix.length()
+                && s.substring(s.length() - suffix.length()).equalsIgnoreCase(suffix)) {
+            s = s.substring(0, s.length() - suffix.length());
+        }
+        s = s.replaceAll('[^a-zA-Z0-9_]', '_');
+        s = s.replaceAll('_+', '_');
+        s = s.replaceAll('^[_0-9]+', '');
+        s = s.replaceAll('_+$', '');
+        if (String.isBlank(s)) {
+            s = 'X';
+        }
+        if (s.length() > 40) {
+            s = s.substring(0, 40).replaceAll('_+$', '');
+        }
+        return s + (suffix == null ? '' : suffix);
     }
 
     /**
@@ -30,7 +58,10 @@ public with sharing class BigObjectDeployService {
      * is a safe fallback for any path that builds a request directly.)
      */
     private static String effectiveBoName(BigObjectConfiguratorController.FieldSelection f) {
-        return String.isBlank(f.bigObjectApiName) ? toBigObjectFieldName(f.apiName) : f.bigObjectApiName;
+        // Always run the provided name through the sanitizer too (idempotent) so any path that builds
+        // a request directly — not just the UI — produces a deploy-safe name.
+        String raw = String.isBlank(f.bigObjectApiName) ? f.apiName : f.bigObjectApiName;
+        return sanitizeApiName(raw, '__c');
     }
 
     // ---- Public entry points ----------------------------------------------
@@ -46,7 +77,10 @@ public with sharing class BigObjectDeployService {
     ) {
         MetadataService.MetadataPort service = MetadataServiceFactory.createService();
 
-        String psName = request.apiName.removeEnd('__b') + '_Access';
+        // Authoritative, defense-in-depth: normalize the Big Object API name here too, so the object,
+        // index, permission set, and file paths all use the same deploy-safe name regardless of input.
+        request.apiName = sanitizeApiName(request.apiName, '__b');
+        String psName = sanitizeApiName(request.apiName.removeEnd('__b') + '_Access', null);
         MetadataZip zip = new MetadataZip();
         zip.addFile('package.xml', buildPackageXml(request, psName));
         zip.addFile('objects/' + request.apiName + '.object', buildObjectXml(request));
