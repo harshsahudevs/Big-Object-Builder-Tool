@@ -410,6 +410,9 @@ public with sharing class BigObjectArchiveService {
 
             // Fetch the rows and match requested keys in memory (avoids fragile typed IN-binds).
             Map<String, SObject> rowsByKey = queryBigObjectRowsByKeys(targetDescribe, indexFields, recordKeys);
+            // Full-record snapshots captured at archive time (the ONLY faithful source in orgs where
+            // non-index Big Object fields are not SOQL-queryable). Keyed by Big Object record key.
+            Map<String, String> snapshotByKey = loadSnapshotsByKey(bigObjectApiName, recordKeys);
 
             List<SObject> toInsert = new List<SObject>();
             List<String> alignedKeys = new List<String>();
@@ -425,20 +428,29 @@ public with sharing class BigObjectArchiveService {
                     continue;
                 }
                 SObject newRecord = sourceType.newSObject();
-                // Only read fields actually present on the row. A phantom describe column (stale
-                // cache after recreate) is dropped from the SELECT by the self-heal above, so it is
-                // not populated here — reading it would throw "retrieved via SOQL without querying".
-                Set<String> populated = new Set<String>();
-                for (String p : bigRow.getPopulatedFieldsAsMap().keySet()) {
-                    populated.add(p.toLowerCase());
-                }
-                for (String bigField : restoreMap.keySet()) {
-                    if (populated.contains(bigField.toLowerCase())) {
-                        String srcField = restoreMap.get(bigField);
-                        Object stored = bigRow.get(bigField);
-                        newRecord.put(srcField, coerceForRestore(sourceDescribe, srcField, stored));
+                String snapshotJson = snapshotByKey.get(key);
+                if (String.isNotBlank(snapshotJson)) {
+                    // Faithful restore: rebuild the WHOLE record from the archive-time snapshot (every
+                    // readable field), so nothing is lost even if the Big Object can't return non-index fields.
+                    applySnapshotToRecord(sourceDescribe, newRecord, snapshotJson);
+                } else {
+                    // Fallback for rows archived before snapshots existed: rebuild from the queryable
+                    // Big Object fields. Only read fields actually present on the row (phantom describe
+                    // columns are dropped by the self-heal, so reading them would throw).
+                    Set<String> populated = new Set<String>();
+                    for (String p : bigRow.getPopulatedFieldsAsMap().keySet()) {
+                        populated.add(p.toLowerCase());
+                    }
+                    for (String bigField : restoreMap.keySet()) {
+                        if (populated.contains(bigField.toLowerCase())) {
+                            String srcField = restoreMap.get(bigField);
+                            Object stored = bigRow.get(bigField);
+                            newRecord.put(srcField, coerceForRestore(sourceDescribe, srcField, stored));
+                        }
                     }
                 }
+                // Re-link overrides (e.g. a child's parent lookup pointed at the restored parent's new Id).
+                applyRestoreOverrides(sourceDescribe, newRecord, sourceFieldOverrides);
                 toInsert.add(newRecord);
                 alignedKeys.add(key);
             }
@@ -498,6 +510,104 @@ public with sharing class BigObjectArchiveService {
             when BOOLEAN { return Boolean.valueOf(s); }
             when DATE { return Date.valueOf(s); }
             when else { return s; }
+        }
+    }
+
+    // ---- Snapshot-backed restore -------------------------------------------
+
+    /**
+     * Loads the full-record JSON snapshots for the given Big Object row keys from the archive log.
+     * Latest successful Archive per key wins. Record_Snapshot__c is a LongTextArea (not filterable),
+     * so we filter on the key + operation and keep the snapshot column in the SELECT only.
+     */
+    private static Map<String, String> loadSnapshotsByKey(String bigObjectApiName, List<String> recordKeys) {
+        Map<String, String> snapshotByKey = new Map<String, String>();
+        for (Big_Object_Archive_Log__c log : [
+            SELECT Record_Key__c, Record_Snapshot__c
+            FROM Big_Object_Archive_Log__c
+            WHERE Target_Big_Object__c = :bigObjectApiName
+                AND Operation__c = 'Archive'
+                AND Record_Key__c IN :recordKeys
+            WITH USER_MODE
+            ORDER BY CreatedDate ASC
+        ]) {
+            if (String.isNotBlank(log.Record_Key__c) && String.isNotBlank(log.Record_Snapshot__c)) {
+                snapshotByKey.put(log.Record_Key__c, log.Record_Snapshot__c); // ASC → latest overwrites
+            }
+        }
+        return snapshotByKey;
+    }
+
+    /** Rebuilds a source record from its JSON snapshot, setting every createable field it captured. */
+    @TestVisible
+    private static void applySnapshotToRecord(
+        Schema.DescribeSObjectResult sourceDescribe, SObject record, String snapshotJson
+    ) {
+        Map<String, Schema.SObjectField> fields = sourceDescribe.fields.getMap();
+        Map<String, Object> parsed = (Map<String, Object>) JSON.deserializeUntyped(snapshotJson);
+        Object fieldsObj = parsed.get('fields');
+        if (!(fieldsObj instanceof List<Object>)) {
+            return;
+        }
+        for (Object item : (List<Object>) fieldsObj) {
+            Map<String, Object> entry = (Map<String, Object>) item;
+            String name = (String) entry.get('name');
+            if (String.isBlank(name)) {
+                continue;
+            }
+            Schema.SObjectField token = fields.get(name.toLowerCase());
+            if (token == null) {
+                continue;
+            }
+            Schema.DescribeFieldResult describe = token.getDescribe();
+            Object raw = entry.get('value');
+            if (!describe.isCreateable() || raw == null) {
+                continue;
+            }
+            Object value = coerceFromSnapshot(describe.getType(), String.valueOf(raw));
+            if (value != null) {
+                record.put(describe.getName(), value);
+            }
+        }
+    }
+
+    /**
+     * Converts a stringified snapshot value back to the source field's real Apex type. Unparseable
+     * values are skipped (null) so one bad value never fails the whole restore.
+     */
+    @TestVisible
+    private static Object coerceFromSnapshot(Schema.DisplayType fieldType, String value) {
+        if (String.isBlank(value)) {
+            return null;
+        }
+        try {
+            switch on fieldType {
+                when BOOLEAN { return Boolean.valueOf(value); }
+                when DATE { return Date.valueOf(value.substringBefore(' ')); }
+                when DATETIME { return Datetime.valueOf(value); }
+                when INTEGER { return Integer.valueOf(value); }
+                when LONG { return Long.valueOf(value); }
+                when DOUBLE, CURRENCY, PERCENT { return Double.valueOf(value); }
+                when else { return value; }
+            }
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    /** Forces the given source-field overrides onto a restored record (used to re-link children). */
+    private static void applyRestoreOverrides(
+        Schema.DescribeSObjectResult sourceDescribe, SObject record, Map<String, Object> overrides
+    ) {
+        if (overrides == null || overrides.isEmpty()) {
+            return;
+        }
+        Map<String, Schema.SObjectField> fields = sourceDescribe.fields.getMap();
+        for (String fieldName : overrides.keySet()) {
+            Schema.SObjectField token = fields.get(fieldName.toLowerCase());
+            if (token != null && token.getDescribe().isCreateable()) {
+                record.put(token.getDescribe().getName(), overrides.get(fieldName));
+            }
         }
     }
 

@@ -41,6 +41,7 @@ public with sharing class BigObjectConfiguratorController {
         @AuraEnabled public String apiName;
         @AuraEnabled public String type;        // mapped Big Object type, or raw type if unsupported
         @AuraEnabled public Integer length;      // text length / number precision
+        @AuraEnabled public Integer scale;       // number scale (decimal places); 0 for non-numbers
         @AuraEnabled public Boolean isRequired;  // source field required?
         @AuraEnabled public Boolean isSupported; // can this field be archived (natively or via text coercion)?
         @AuraEnabled public Boolean isCoerced;  // unsupported native type stored as Text/LongTextArea (converted back on unarchive)
@@ -154,6 +155,13 @@ public with sharing class BigObjectConfiguratorController {
                 info.label = df.getLabel();
                 info.apiName = df.getName();
                 info.length = df.getLength();
+                info.scale = 0;
+                // Numeric fields: carry precision (as length) and scale so decimals are NOT lost.
+                // df.getLength() is 0 for numbers, so use precision/scale from describe instead.
+                if (isNumericType(df.getType())) {
+                    info.length = df.getPrecision();
+                    info.scale = df.getScale();
+                }
                 info.isRequired = !df.isNillable() && df.isCreateable();
                 // Fields that MUST hold a value on insert (would block an unarchive/restore if not
                 // stored): required, createable, and not auto-defaulted by the platform.
@@ -203,6 +211,15 @@ public with sharing class BigObjectConfiguratorController {
             when MULTIPICKLIST { return 'LongTextArea'; }
             when else { return null; }
         }
+    }
+
+    /** True for numeric source types that map to a Big Object Number (precision + scale matter). */
+    private static Boolean isNumericType(Schema.DisplayType type) {
+        return type == Schema.DisplayType.INTEGER
+            || type == Schema.DisplayType.DOUBLE
+            || type == Schema.DisplayType.CURRENCY
+            || type == Schema.DisplayType.PERCENT
+            || type == Schema.DisplayType.LONG;
     }
 
     /** True for source types with no native Big Object type — stored as text, restored to type. */

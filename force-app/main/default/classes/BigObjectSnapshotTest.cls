@@ -60,4 +60,41 @@ private class BigObjectSnapshotTest {
         }
         Assert.isTrue(sawName, 'The Name field should be present in the serialized snapshot.');
     }
+
+    @isTest
+    static void applySnapshotToRecord_RebuildsFullRecordWithTypes() {
+        // The restore path rebuilds a record from the snapshot (not from non-index Big Object fields).
+        Schema.DescribeSObjectResult describe = Archive_Source__c.SObjectType.getDescribe();
+        String snapshotJson = '{"sourceObject":"Archive_Source__c","fields":['
+            + '{"name":"Name","label":"Name","type":"string","value":"Acme Corp"},'
+            + '{"name":"Amount__c","label":"Amount","type":"currency","value":"150.50"},'
+            + '{"name":"Is_Archived__c","label":"Archived","type":"boolean","value":"true"}]}';
+        SObject record = describe.getSObjectType().newSObject();
+
+        Test.startTest();
+        BigObjectArchiveService.applySnapshotToRecord(describe, record, snapshotJson);
+        Test.stopTest();
+
+        Assert.areEqual('Acme Corp', (String) record.get('Name'), 'Text field should restore from snapshot.');
+        Assert.areEqual(150.50, (Decimal) record.get('Amount__c'),
+            'Decimal value must be preserved end-to-end (no truncation to whole number).');
+        Assert.areEqual(true, (Boolean) record.get('Is_Archived__c'), 'Boolean should restore from snapshot.');
+    }
+
+    @isTest
+    static void coerceFromSnapshot_ConvertsByType() {
+        Assert.areEqual(true, BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.BOOLEAN, 'true'),
+            'Boolean should parse.');
+        Assert.areEqual(150.5, (Double) BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.DOUBLE, '150.5'),
+            'Decimal should parse.');
+        Assert.areEqual(Date.newInstance(2026, 10, 23),
+            BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.DATE, '2026-10-23 00:00:00'),
+            'Date should parse, tolerating a trailing time.');
+        Assert.isNull(BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.DOUBLE, 'not-a-number'),
+            'Unparseable numeric should return null, not throw.');
+        Assert.isNull(BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.STRING, ''),
+            'Blank should return null.');
+        Assert.areEqual('abc', BigObjectArchiveService.coerceFromSnapshot(Schema.DisplayType.STRING, 'abc'),
+            'Plain text should pass through.');
+    }
 }

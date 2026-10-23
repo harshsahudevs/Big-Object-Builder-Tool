@@ -534,7 +534,7 @@ export default class BigObjectConfigurator extends LightningElement {
                     label: boLabel,
                     type: f.type,
                     length: f.length,
-                    scale: 0,
+                    scale: f.scale == null ? 0 : f.scale,
                     // Index fields must be required; mark them required in the request.
                     required: f.isRequired || !!(this.indexConfig[f.apiName] && this.indexConfig[f.apiName].included),
                     referenceTo: f.referenceTo
@@ -555,12 +555,23 @@ export default class BigObjectConfigurator extends LightningElement {
     }
 
     // The Big Object is deployed via the async Metadata API; poll until the deploy finishes.
-    pollDeploy(jobId) {
+    // Bounded: stops after MAX_POLL_ATTEMPTS (~5 min) so a stuck deploy never polls forever.
+    pollDeploy(jobId, attempt = 0) {
+        const MAX_POLL_ATTEMPTS = 120; // 120 × 2.5s ≈ 5 minutes
         checkCreateStatus({ jobId })
             .then((status) => {
                 if (!status.done) {
+                    if (attempt >= MAX_POLL_ATTEMPTS) {
+                        this.isCreating = false;
+                        this.showToast(
+                            'Still deploying',
+                            'The Big Object deploy is taking longer than expected. Check Setup → Deployment Status; it may still complete. Refresh the list before retrying so you do not create a duplicate.',
+                            'warning'
+                        );
+                        return;
+                    }
                     // eslint-disable-next-line @lwc/lwc/no-async-operation
-                    setTimeout(() => this.pollDeploy(jobId), 2500);
+                    setTimeout(() => this.pollDeploy(jobId, attempt + 1), 2500);
                     return;
                 }
                 this.isCreating = false;

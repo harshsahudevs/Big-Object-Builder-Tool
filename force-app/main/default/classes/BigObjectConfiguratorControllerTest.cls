@@ -137,6 +137,12 @@ private class BigObjectConfiguratorControllerTest {
             'Checkbox should be flagged as coerced');
         Assert.areEqual('Text', byApi.get('Is_Archived__c').type,
             'Coerced Checkbox should be stored as Text');
+        // Number scale must be captured from describe (not hardcoded 0) so decimals aren't lost.
+        Assert.areEqual('Number', byApi.get('Amount__c').type, 'Currency/Number maps to Number.');
+        Assert.areEqual(2, byApi.get('Amount__c').scale,
+            'Amount__c is Number(18,2) — scale 2 must be captured so decimals are preserved.');
+        Assert.areEqual(18, byApi.get('Amount__c').length,
+            'Number length should carry precision (18), not the text length of 0.');
     }
 
     @isTest
