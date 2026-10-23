@@ -1,0 +1,20 @@
+.builder-shell {
+    min-height: 80vh;
+    border: 1px solid #e5e5e5;
+    border-radius: 0.25rem;
+    overflow: hidden;
+    background: #ffffff;
+}
+
+.builder-nav {
+    flex: 0 0 240px;
+    max-width: 240px;
+    border-right: 1px solid #e5e5e5;
+    background: #f3f3f3;
+}
+
+.builder-content {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: auto;
+}

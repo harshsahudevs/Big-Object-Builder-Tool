@@ -1,14 +1,23 @@
 import { LightningElement, track } from 'lwc';
+import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import getPolicies from '@salesforce/apex/ArchivePolicyController.getPolicies';
 import getPolicy from '@salesforce/apex/ArchivePolicyController.getPolicy';
 import getObjectOptions from '@salesforce/apex/ArchivePolicyController.getObjectOptions';
 import getFieldOptions from '@salesforce/apex/ArchivePolicyController.getFieldOptions';
+import getBigObjectsForSource from '@salesforce/apex/ArchivePolicyController.getBigObjectsForSource';
+import getPicklistValues from '@salesforce/apex/ArchivePolicyController.getPicklistValues';
 import savePolicy from '@salesforce/apex/ArchivePolicyController.savePolicy';
 import getPreviewCount from '@salesforce/apex/ArchivePolicyController.getPreviewCount';
 import runNow from '@salesforce/apex/ArchivePolicyController.runNow';
 import setActive from '@salesforce/apex/ArchivePolicyController.setActive';
 import getExecutionLogs from '@salesforce/apex/ArchivePolicyController.getExecutionLogs';
+
+const BOOLEAN_OPTIONS = [
+    { label: 'True', value: 'true' },
+    { label: 'False', value: 'false' }
+];
+const BIG_OBJECT_BUILDER_TAB = 'Big_Object_Builder';
 
 const ACTION_OPTIONS = [
     { label: 'Soft Delete', value: 'Soft Delete' },
@@ -65,13 +74,17 @@ const DASHBOARD_COLUMNS = [
     }
 ];
 
-export default class ArchivePolicyManager extends LightningElement {
+export default class ArchivePolicyManager extends NavigationMixin(LightningElement) {
     @track policies = [];
     @track conditions = [];
     @track policy = {};
     @track objectOptions = [];
     @track fieldOptions = [];
+    @track bigObjectOptions = [];
     @track logs = [];
+
+    booleanOptions = BOOLEAN_OPTIONS;
+    noBigObjects = false;
 
     columns = DASHBOARD_COLUMNS;
     actionOptions = ACTION_OPTIONS;
@@ -187,6 +200,8 @@ export default class ArchivePolicyManager extends LightningElement {
         };
         this.conditions = [];
         this.fieldOptions = [];
+        this.bigObjectOptions = [];
+        this.noBigObjects = false;
         this.currentStep = '1';
         this.previewRan = false;
         this.previewCount = undefined;
@@ -206,14 +221,18 @@ export default class ArchivePolicyManager extends LightningElement {
                     field: c.Field_API_Name__c,
                     operator: c.Operator__c,
                     value: c.Value__c,
-                    relativeFunction: c.Relative_Function__c
+                    relativeFunction: c.Relative_Function__c,
+                    valueOptions: []
                 }));
                 this.currentStep = '1';
                 this.previewRan = false;
                 this.view = 'wizard';
                 return this.ensureObjectOptions().then(() => {
                     if (this.policy.Target_Object__c) {
-                        return this.loadFields(this.policy.Target_Object__c);
+                        return Promise.all([
+                            this.loadFields(this.policy.Target_Object__c),
+                            this.loadBigObjects(this.policy.Target_Object__c)
+                        ]).then(() => this.enrichPicklistConditions());
                     }
                     return null;
                 });
@@ -256,8 +275,29 @@ export default class ArchivePolicyManager extends LightningElement {
         this.policy = { ...this.policy, [field]: value };
         if (field === 'Target_Object__c' && value) {
             this.fieldOptions = [];
+            this.policy = { ...this.policy, Target_Big_Object__c: '' };
             this.loadFields(value);
+            this.loadBigObjects(value);
         }
+    }
+
+    loadBigObjects(sourceObject) {
+        this.bigObjectOptions = [];
+        this.noBigObjects = false;
+        return getBigObjectsForSource({ sourceObject })
+            .then((opts) => {
+                this.bigObjectOptions = (opts || []).map((o) => ({ label: `${o.label} (${o.value})`, value: o.value }));
+                this.noBigObjects = this.bigObjectOptions.length === 0;
+            })
+            .catch((e) => this.toast('Load failed', this.reduceError(e), 'error'));
+    }
+
+    // Jump to the Big Object Builder app's Configure screen to create a Big Object for this source.
+    navigateToBuilder() {
+        this[NavigationMixin.Navigate]({
+            type: 'standard__navItemPage',
+            attributes: { apiName: BIG_OBJECT_BUILDER_TAB }
+        });
     }
 
     addCondition() {
@@ -270,7 +310,8 @@ export default class ArchivePolicyManager extends LightningElement {
                 field: '',
                 operator: 'Equals',
                 value: '',
-                relativeFunction: 'N_DAYS_AGO'
+                relativeFunction: 'N_DAYS_AGO',
+                valueOptions: []
             }
         ];
     }
@@ -285,8 +326,40 @@ export default class ArchivePolicyManager extends LightningElement {
     handleConditionChange(event) {
         const key = event.target.dataset.key;
         const prop = event.target.dataset.prop;
-        const value = event.target.value;
+        const value = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
         this.conditions = this.conditions.map((c) => (c.key === key ? { ...c, [prop]: value } : c));
+        if (prop === 'field') {
+            // New field: clear the value and (re)load picklist values if applicable.
+            this.conditions = this.conditions.map((c) =>
+                c.key === key ? { ...c, value: '', valueOptions: [] } : c
+            );
+            this.maybeLoadPicklist(key, value);
+        }
+    }
+
+    maybeLoadPicklist(key, fieldApiName) {
+        const type = this.fieldTypeOf(fieldApiName);
+        if (type !== 'picklist' && type !== 'multipicklist') {
+            return;
+        }
+        getPicklistValues({ objectApiName: this.policy.Target_Object__c, fieldApiName })
+            .then((values) => {
+                const mapped = (values || []).map((v) => ({ label: v.label, value: v.value }));
+                this.conditions = this.conditions.map((c) =>
+                    c.key === key ? { ...c, valueOptions: mapped } : c
+                );
+            })
+            .catch(() => {
+                /* leave as free text if picklist values can't load */
+            });
+    }
+
+    enrichPicklistConditions() {
+        this.conditions.forEach((c) => {
+            if (c.field) {
+                this.maybeLoadPicklist(c.key, c.field);
+            }
+        });
     }
 
     // ---- preview + save ----------------------------------------------------
@@ -454,10 +527,54 @@ export default class ArchivePolicyManager extends LightningElement {
         return this.policy.Schedule_Type__c !== 'Cron';
     }
     get decoratedConditions() {
-        return this.conditions.map((c) => ({
-            ...c,
-            showRelative: c.operator === 'Relative Date'
-        }));
+        return this.conditions.map((c) => {
+            const kind = this.inputKind(this.fieldTypeOf(c.field), c.operator);
+            return {
+                ...c,
+                valueOptions: c.valueOptions || [],
+                showRelative: kind === 'relative',
+                isPicklist: kind === 'picklist',
+                isBoolean: kind === 'boolean',
+                isDate: kind === 'date',
+                isDatetime: kind === 'datetime',
+                isNumber: kind === 'number',
+                isText: kind === 'text'
+            };
+        });
+    }
+
+    fieldTypeOf(fieldApiName) {
+        const match = this.fieldOptions.find((f) => f.value === fieldApiName);
+        return match ? match.type : '';
+    }
+
+    // Decides which input a condition's value should use, from the field type + operator.
+    inputKind(fieldType, operator) {
+        if (operator === 'Relative Date') {
+            return 'relative';
+        }
+        if (operator === 'In' || operator === 'Contains') {
+            return 'text';
+        }
+        switch (fieldType) {
+            case 'picklist':
+            case 'multipicklist':
+                return 'picklist';
+            case 'boolean':
+                return 'boolean';
+            case 'date':
+                return 'date';
+            case 'datetime':
+                return 'datetime';
+            case 'currency':
+            case 'double':
+            case 'integer':
+            case 'long':
+            case 'percent':
+                return 'number';
+            default:
+                return 'text';
+        }
     }
     get previewLabel() {
         return this.previewRan ? `${this.previewCount} matching record(s)` : '';

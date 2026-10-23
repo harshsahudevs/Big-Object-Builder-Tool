@@ -64,8 +64,18 @@
                         <lightning-combobox label="Action Type" value={policy.Action_Type__c}
                             options={actionOptions} data-field="Action_Type__c" onchange={handlePolicyChange}></lightning-combobox>
                         <template if:true={showBigObjectField}>
-                            <lightning-input label="Target Big Object (API name ending in __b)" value={policy.Target_Big_Object__c}
-                                data-field="Target_Big_Object__c" onchange={handlePolicyChange}></lightning-input>
+                            <template if:false={noBigObjects}>
+                                <lightning-combobox label="Target Big Object" value={policy.Target_Big_Object__c} placeholder="Select a Big Object"
+                                    options={bigObjectOptions} data-field="Target_Big_Object__c" onchange={handlePolicyChange}></lightning-combobox>
+                            </template>
+                            <template if:true={noBigObjects}>
+                                <div class="slds-box slds-box_x-small slds-theme_shade slds-m-top_x-small">
+                                    <p class="slds-text-body_regular slds-m-bottom_x-small">
+                                        No Big Object is configured for this object yet. Create one in the Big Object Builder, then come back and select it here.
+                                    </p>
+                                    <lightning-button label="Create a Big Object" icon-name="utility:new" variant="brand" onclick={navigateToBuilder}></lightning-button>
+                                </div>
+                            </template>
                         </template>
                     </template>
 
@@ -95,8 +105,34 @@
                                     </div>
                                 </template>
                                 <div class="slds-col">
-                                    <lightning-input label="Value" variant="label-hidden" value={c.value}
-                                        data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    <template if:true={c.isPicklist}>
+                                        <lightning-combobox label="Value" variant="label-hidden" value={c.value} options={c.valueOptions}
+                                            placeholder="Select a value" data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-combobox>
+                                    </template>
+                                    <template if:true={c.isBoolean}>
+                                        <lightning-combobox label="Value" variant="label-hidden" value={c.value} options={booleanOptions}
+                                            placeholder="Select" data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-combobox>
+                                    </template>
+                                    <template if:true={c.isDate}>
+                                        <lightning-input type="date" label="Value" variant="label-hidden" value={c.value}
+                                            data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    </template>
+                                    <template if:true={c.isDatetime}>
+                                        <lightning-input type="datetime" label="Value" variant="label-hidden" value={c.value}
+                                            data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    </template>
+                                    <template if:true={c.isNumber}>
+                                        <lightning-input type="number" label="Value" variant="label-hidden" value={c.value}
+                                            data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    </template>
+                                    <template if:true={c.isText}>
+                                        <lightning-input label="Value" variant="label-hidden" value={c.value}
+                                            data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    </template>
+                                    <template if:true={c.showRelative}>
+                                        <lightning-input type="number" label="Value" variant="label-hidden" value={c.value} min="1"
+                                            placeholder="e.g. 60" data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                    </template>
                                 </div>
                                 <div class="slds-col slds-size_1-of-12">
                                     <lightning-button-icon icon-name="utility:delete" alternative-text="Remove" title="Remove"

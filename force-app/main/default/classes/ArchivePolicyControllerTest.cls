@@ -42,6 +42,60 @@ private class ArchivePolicyControllerTest {
     }
 
     @isTest
+    static void getObjectOptions_ExcludesBigObjectsAndSystemEntities() {
+        Test.startTest();
+        List<ArchivePolicyController.Option> options = ArchivePolicyController.getObjectOptions();
+        Test.stopTest();
+
+        for (ArchivePolicyController.Option option : options) {
+            String name = option.value.toLowerCase();
+            Assert.isFalse(name.endsWith('__b'), 'Big Objects must be excluded: ' + option.value);
+            Assert.isFalse(name.endsWith('__mdt'), 'Custom metadata types must be excluded: ' + option.value);
+            Assert.isFalse(name.endsWith('__e'), 'Platform events must be excluded: ' + option.value);
+            Assert.isFalse(name.endsWith('changeevent'), 'Change events must be excluded: ' + option.value);
+        }
+    }
+
+    @isTest
+    static void getBigObjectsForSource_ReturnsMappedOnly() {
+        insert new Big_Object_Field_Mapping__c(
+            Source_Object__c = 'Archive_Source__c',
+            Big_Object__c = 'Archive_Record__b',
+            Source_Field__c = 'Amount__c',
+            Big_Object_Field__c = 'Amount__c'
+        );
+
+        Test.startTest();
+        List<ArchivePolicyController.Option> mapped = ArchivePolicyController.getBigObjectsForSource('Archive_Source__c');
+        List<ArchivePolicyController.Option> none = ArchivePolicyController.getBigObjectsForSource('Contact');
+        Test.stopTest();
+
+        Assert.areEqual(1, mapped.size(), 'Exactly the mapped Big Object should be returned.');
+        Assert.areEqual('Archive_Record__b', mapped[0].value, 'The mapped Big Object should be returned.');
+        Assert.isTrue(none.isEmpty(), 'An unmapped source should return no Big Objects.');
+    }
+
+    @isTest
+    static void getPicklistValues_ReturnsActiveValues_EmptyForNonPicklist() {
+        Test.startTest();
+        List<ArchivePolicyController.Option> statusValues =
+            ArchivePolicyController.getPicklistValues('Archive_Policy__c', 'Status__c');
+        List<ArchivePolicyController.Option> notPicklist =
+            ArchivePolicyController.getPicklistValues('Archive_Source__c', 'Amount__c');
+        Test.stopTest();
+
+        Assert.areEqual(3, statusValues.size(), 'Status has Draft/Active/Inactive.');
+        Boolean hasActive = false;
+        for (ArchivePolicyController.Option option : statusValues) {
+            if (option.value == 'Active') {
+                hasActive = true;
+            }
+        }
+        Assert.isTrue(hasActive, 'The Active value should be present.');
+        Assert.isTrue(notPicklist.isEmpty(), 'A non-picklist field should return no values.');
+    }
+
+    @isTest
     static void getFieldOptions_ReturnsFieldsWithType() {
         Test.startTest();
         List<ArchivePolicyController.Option> options = ArchivePolicyController.getFieldOptions('Archive_Source__c');

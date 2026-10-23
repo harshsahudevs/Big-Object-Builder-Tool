@@ -112,8 +112,14 @@ public with sharing class ArchivePolicyController {
         }
     }
 
+    // Suffixes of system/non-archivable entities to exclude from the object picker.
+    private static final Set<String> EXCLUDED_SUFFIXES = new Set<String>{
+        '__mdt', '__e', '__b', '__x', '__share', '__history', '__feed', '__tag', 'changeevent'
+    };
+
     /**
-     * @return Archivable objects (queryable and updateable or deletable) as value/label options.
+     * @return Real archivable business objects — standard and custom (__c) data objects only, no
+     *         system/share/history/feed/CDC/metadata/platform-event/big-object/external entities.
      */
     @AuraEnabled(cacheable=true)
     public static List<Option> getObjectOptions() {
@@ -121,18 +127,97 @@ public with sharing class ArchivePolicyController {
             List<Option> options = new List<Option>();
             for (Schema.SObjectType token : Schema.getGlobalDescribe().values()) {
                 Schema.DescribeSObjectResult describe = token.getDescribe();
-                if (!describe.isQueryable() || describe.isCustomSetting() || !describe.isAccessible()) {
-                    continue;
+                if (isArchivableObject(describe)) {
+                    options.add(new Option(describe.getName(), describe.getLabel(), null));
                 }
-                if (!describe.isUpdateable() && !describe.isDeletable()) {
-                    continue;
-                }
-                options.add(new Option(describe.getName(), describe.getLabel(), null));
             }
             options.sort(new OptionComparator());
             return options;
         } catch (Exception e) {
             throw new AuraHandledException('Unable to load objects: ' + e.getMessage());
+        }
+    }
+
+    private static Boolean isArchivableObject(Schema.DescribeSObjectResult describe) {
+        if (!describe.isQueryable() || !describe.isAccessible() || !describe.isCreateable()
+                || describe.isCustomSetting() || describe.isDeprecatedAndHidden()) {
+            return false;
+        }
+        String name = describe.getName().toLowerCase();
+        for (String suffix : EXCLUDED_SUFFIXES) {
+            if (name.endsWith(suffix)) {
+                return false;
+            }
+        }
+        // Custom (__c) objects are always archivable; standard objects must be deletable, which
+        // filters out the many read-only system standard entities.
+        return describe.isCustom() || describe.isDeletable();
+    }
+
+    /**
+     * Big Objects configured as archive targets for a given source object (from the mapping config).
+     * @param sourceObject The source object API name.
+     * @return Mapped Big Objects as value/label options; empty when none are configured yet.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Option> getBigObjectsForSource(String sourceObject) {
+        try {
+            if (String.isBlank(sourceObject)) {
+                return new List<Option>();
+            }
+            Map<String, Schema.SObjectType> globalDescribe = Schema.getGlobalDescribe();
+            List<Option> options = new List<Option>();
+            Set<String> seen = new Set<String>();
+            for (AggregateResult row : [
+                SELECT Big_Object__c bigObject
+                FROM Big_Object_Field_Mapping__c
+                WHERE Source_Object__c = :sourceObject AND Big_Object__c != null
+                WITH USER_MODE
+                GROUP BY Big_Object__c
+            ]) {
+                String apiName = (String) row.get('bigObject');
+                if (String.isBlank(apiName) || !seen.add(apiName.toLowerCase())) {
+                    continue;
+                }
+                String label = globalDescribe.containsKey(apiName)
+                    ? globalDescribe.get(apiName).getDescribe().getLabel()
+                    : apiName;
+                options.add(new Option(apiName, label, null));
+            }
+            options.sort(new OptionComparator());
+            return options;
+        } catch (Exception e) {
+            throw new AuraHandledException('Unable to load Big Objects: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * Active picklist values for a field, so the condition builder can offer them instead of free
+     * text. Returns an empty list for non-picklist fields.
+     * @param objectApiName The object.
+     * @param fieldApiName The field.
+     * @return Picklist values as value/label options.
+     */
+    @AuraEnabled(cacheable=true)
+    public static List<Option> getPicklistValues(String objectApiName, String fieldApiName) {
+        try {
+            if (String.isBlank(objectApiName) || String.isBlank(fieldApiName)) {
+                return new List<Option>();
+            }
+            Schema.DescribeSObjectResult describe = ArchivePolicyEngineHelper.describeObject(objectApiName);
+            Schema.SObjectField token = describe.fields.getMap().get(fieldApiName.toLowerCase());
+            if (token == null) {
+                return new List<Option>();
+            }
+            List<Option> options = new List<Option>();
+            for (Schema.PicklistEntry entry : token.getDescribe().getPicklistValues()) {
+                if (entry.isActive()) {
+                    options.add(new Option(entry.getValue(), entry.getLabel(), null));
+                }
+            }
+            return options;
+        } catch (Exception e) {
+            throw new AuraHandledException('Unable to load picklist values: ' + e.getMessage());
         }
     }
 

@@ -3,6 +3,10 @@
     <label>Big Object Archive Access</label>
     <description>Grants read/create access to the archive log and FLS on its non-required fields so the Big Object Admin dashboard and archive/restore flows can run under USER_MODE. Assign to admins and any user who archives or restores records.</description>
     <hasActivationRequired>false</hasActivationRequired>
+    <applicationVisibilities>
+        <application>Big_Object_Builder</application>
+        <visible>true</visible>
+    </applicationVisibilities>
     <objectPermissions>
         <object>Big_Object_Archive_Log__c</object>
         <allowRead>true</allowRead>
@@ -292,4 +296,8 @@
         <readable>true</readable>
         <editable>true</editable>
     </fieldPermissions>
+    <tabSettings>
+        <tab>Big_Object_Builder</tab>
+        <visibility>Visible</visibility>
+    </tabSettings>
 </PermissionSet>

@@ -1,24 +1,72 @@
 <template>
-    <!-- Setup gate: shown until the Named Credential is confirmed -->
-    <template if:false={isUnlocked}>
-        <template if:true={showGateMessage}>
-            <div class="slds-notify slds-notify_alert slds-theme_info slds-m-bottom_medium" role="status">
-                <lightning-icon icon-name="utility:lock" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                The Big Object Configurator is locked until Metadata API setup is complete. Finish the steps below to unlock it.
+    <div class="builder-shell slds-grid">
+        <!-- Left vertical navigation -->
+        <div class="builder-nav slds-p-vertical_medium">
+            <div class="slds-media slds-media_center slds-p-horizontal_medium slds-m-bottom_medium">
+                <div class="slds-media__figure">
+                    <lightning-icon icon-name="standard:record" size="small"></lightning-icon>
+                </div>
+                <div class="slds-media__body">
+                    <span class="slds-text-heading_small slds-text-color_default">Big Object Builder</span>
+                </div>
             </div>
-        </template>
-        <c-big-object-setup-assistant onsetupcomplete={handleSetupComplete}></c-big-object-setup-assistant>
-    </template>
+            <lightning-vertical-navigation selected-item={activeSection} onselect={handleNavSelect}>
+                <lightning-vertical-navigation-section label="Workspace">
+                    <lightning-vertical-navigation-item-icon label="Dashboard" name="dashboard" icon-name="utility:metrics"></lightning-vertical-navigation-item-icon>
+                    <lightning-vertical-navigation-item-icon label="Configure" name="configure" icon-name="utility:setup"></lightning-vertical-navigation-item-icon>
+                    <lightning-vertical-navigation-item-icon label="Browse" name="browse" icon-name="utility:search"></lightning-vertical-navigation-item-icon>
+                    <lightning-vertical-navigation-item-icon label="Policies" name="policies" icon-name="utility:rules"></lightning-vertical-navigation-item-icon>
+                </lightning-vertical-navigation-section>
+                <lightning-vertical-navigation-section label="System">
+                    <lightning-vertical-navigation-item-icon label="Settings" name="settings" icon-name="utility:settings"></lightning-vertical-navigation-item-icon>
+                </lightning-vertical-navigation-section>
+            </lightning-vertical-navigation>
+        </div>
 
-    <!-- Unlocked: the main tool -->
-    <template if:true={isUnlocked}>
-        <lightning-tabset>
-            <lightning-tab label="Configurator">
-                <c-big-object-configurator></c-big-object-configurator>
-            </lightning-tab>
-            <lightning-tab label="Manage Record Mapping">
-                <c-big-object-mapping-manager></c-big-object-mapping-manager>
-            </lightning-tab>
-        </lightning-tabset>
-    </template>
+        <!-- Content workspace -->
+        <div class="builder-content slds-p-around_medium">
+            <div class="slds-border_bottom slds-m-bottom_medium slds-p-bottom_x-small">
+                <h1 class="slds-text-heading_medium">{headerTitle}</h1>
+                <p class="slds-text-body_small slds-text-color_weak">{headerSubtitle}</p>
+            </div>
+
+            <template if:true={isDashboard}>
+                <c-big-object-admin></c-big-object-admin>
+            </template>
+
+            <template if:true={isConfigure}>
+                <template if:false={isUnlocked}>
+                    <template if:true={showGateMessage}>
+                        <div class="slds-notify slds-notify_alert slds-theme_info slds-m-bottom_medium" role="status">
+                            <lightning-icon icon-name="utility:lock" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                            Configuration is locked until Metadata API setup is complete. Finish the steps below to unlock it.
+                        </div>
+                    </template>
+                    <c-big-object-setup-assistant onsetupcomplete={handleSetupComplete}></c-big-object-setup-assistant>
+                </template>
+                <template if:true={isUnlocked}>
+                    <lightning-tabset>
+                        <lightning-tab label="Configurator">
+                            <c-big-object-configurator></c-big-object-configurator>
+                        </lightning-tab>
+                        <lightning-tab label="Manage Record Mapping">
+                            <c-big-object-mapping-manager></c-big-object-mapping-manager>
+                        </lightning-tab>
+                    </lightning-tabset>
+                </template>
+            </template>
+
+            <template if:true={isBrowse}>
+                <c-big-object-record-viewer></c-big-object-record-viewer>
+            </template>
+
+            <template if:true={isPolicies}>
+                <c-archive-policy-manager></c-archive-policy-manager>
+            </template>
+
+            <template if:true={isSettings}>
+                <c-big-object-settings-home></c-big-object-settings-home>
+            </template>
+        </div>
+    </div>
 </template>
