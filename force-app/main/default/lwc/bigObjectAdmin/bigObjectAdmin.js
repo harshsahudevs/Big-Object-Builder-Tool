@@ -7,6 +7,7 @@ import refreshRecordCounts from '@salesforce/apex/BigObjectAdminController.refre
 
 const ACTIVITY_COLUMNS = [
     { label: 'Log #', fieldName: 'name', type: 'text', initialWidth: 110 },
+    { label: 'Operation', fieldName: 'operation', type: 'text', initialWidth: 110 },
     { label: 'Source Object', fieldName: 'sourceObject', type: 'text' },
     { label: 'Target Big Object', fieldName: 'targetBigObject', type: 'text' },
     { label: 'Status', fieldName: 'status', type: 'text', cellAttributes: { class: { fieldName: 'statusClass' } } },
@@ -30,7 +31,8 @@ export default class BigObjectAdmin extends LightningElement {
     metrics;
     activity = [];
     inventory = [];
-    errorMessage;
+    metricsError;
+    inventoryError;
     isRefreshing = false;
     lastRefreshed = new Date();
 
@@ -46,10 +48,10 @@ export default class BigObjectAdmin extends LightningElement {
                 ...a,
                 statusClass: a.status === 'Failed' ? 'slds-text-color_error' : 'slds-text-color_success'
             }));
-            this.errorMessage = undefined;
+            this.metricsError = undefined;
             this.lastRefreshed = new Date();
         } else if (result.error) {
-            this.errorMessage = this.reduceError(result.error);
+            this.metricsError = this.reduceError(result.error);
         }
     }
 
@@ -61,8 +63,9 @@ export default class BigObjectAdmin extends LightningElement {
                 ...item,
                 indexFieldsText: (item.indexFields || []).join(', ')
             }));
+            this.inventoryError = undefined;
         } else if (result.error) {
-            this.errorMessage = this.reduceError(result.error);
+            this.inventoryError = this.reduceError(result.error);
         }
     }
 
@@ -76,8 +79,20 @@ export default class BigObjectAdmin extends LightningElement {
         return this.metrics ? this.metrics.totalArchived : 0;
     }
 
+    get totalUnarchived() {
+        return this.metrics ? this.metrics.totalUnarchived : 0;
+    }
+
     get failedCount() {
         return this.metrics ? this.metrics.failedCount : 0;
+    }
+
+    get unarchiveFailedCount() {
+        return this.metrics ? this.metrics.unarchiveFailedCount : 0;
+    }
+
+    get unarchiveFailedTextClass() {
+        return this.unarchiveFailedCount > 0 ? 'slds-text-color_error' : 'slds-text-color_success';
     }
 
     get usagePercent() {
@@ -151,11 +166,11 @@ export default class BigObjectAdmin extends LightningElement {
     // ---- empty states ------------------------------------------------------
 
     get showNoActivity() {
-        return this.activity.length === 0 && !this.errorMessage;
+        return this.activity.length === 0 && !this.metricsError;
     }
 
     get showNoInventory() {
-        return this.inventory.length === 0 && !this.errorMessage;
+        return this.inventory.length === 0 && !this.inventoryError;
     }
 
     get lastRefreshedLabel() {

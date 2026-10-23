@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Run_Status__c</fullName>
+    <label>Last Run Status</label>
+    <description>Outcome of the most recent execution (Completed, Failed, or In Progress), stamped when a run finishes. Shown on the policy dashboard.</description>
+    <inlineHelpText>Result of the most recent run.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

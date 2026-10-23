@@ -155,31 +155,50 @@
                         title="Close"
                         class="slds-modal__close"
                     ></lightning-button-icon>
-                    <h2 id="detail-heading" class="slds-modal__title slds-hyphenate">
-                        Archived record
-                    </h2>
-                    <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
-                        Full stored data for this record in {selectedBigObject}.
-                    </p>
+                    <div class="slds-media slds-media_center">
+                        <div class="slds-media__figure">
+                            <lightning-icon icon-name="standard:record" size="small"></lightning-icon>
+                        </div>
+                        <div class="slds-media__body">
+                            <h2 id="detail-heading" class="slds-modal__title slds-hyphenate">
+                                {detailHeading}
+                                <lightning-badge label="Archived" class="slds-var-m-left_x-small"></lightning-badge>
+                            </h2>
+                            <p class="slds-text-body_small slds-text-color_weak slds-var-m-top_xx-small">
+                                Read-only · {detailFieldCount} fields · stored in {selectedBigObject}
+                            </p>
+                        </div>
+                    </div>
                 </header>
                 <div class="slds-modal__content slds-var-p-around_medium">
-                    <dl class="slds-list_horizontal slds-wrap">
-                        <template for:each={detailFields} for:item="f">
-                            <dt
-                                key={f.key}
-                                class="slds-item_label slds-text-color_weak slds-size_1-of-3 slds-truncate slds-var-p-vertical_xx-small"
-                                title={f.label}
-                            >
-                                {f.label}
-                            </dt>
-                            <dd
-                                key={f.key}
-                                class="slds-item_detail slds-size_2-of-3 slds-var-p-vertical_xx-small"
-                            >
-                                {f.value}
-                            </dd>
+                    <template if:true={detailSnapshotLoading}>
+                        <div class="slds-align_absolute-center slds-var-p-vertical_large">
+                            <lightning-spinner alternative-text="Loading record" size="small"></lightning-spinner>
+                        </div>
+                    </template>
+                    <template if:false={detailSnapshotLoading}>
+                        <template if:true={detailPartial}>
+                            <div class="slds-scoped-notification slds-media slds-media_center slds-scoped-notification_light slds-var-m-bottom_small" role="status">
+                                <div class="slds-media__figure">
+                                    <lightning-icon icon-name="utility:info" size="x-small"></lightning-icon>
+                                </div>
+                                <div class="slds-media__body">
+                                    <p class="slds-text-body_small">
+                                        Showing only the index fields this org can return. The full record
+                                        snapshot is available for records archived after this feature was enabled.
+                                    </p>
+                                </div>
+                            </div>
                         </template>
-                    </dl>
+                        <div class="slds-grid slds-wrap slds-gutters_small">
+                            <template for:each={detailItems} for:item="f">
+                                <div key={f.key} class="slds-col slds-size_1-of-1 slds-medium-size_1-of-2 slds-var-p-vertical_x-small slds-border_bottom">
+                                    <p class="slds-text-title slds-text-color_weak slds-truncate" title={f.label}>{f.label}</p>
+                                    <p class="slds-text-body_regular" style="white-space:pre-wrap;word-break:break-word;">{f.value}</p>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
                 </div>
                 <footer class="slds-modal__footer">
                     <lightning-button

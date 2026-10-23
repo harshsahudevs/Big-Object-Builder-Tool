@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">
+    <label>Archive Policy Condition</label>
+    <pluralLabel>Archive Policy Conditions</pluralLabel>
+    <description>The Archive Policy Condition object holds one filter row of an Archive Policy as its child. It captures the Field API Name, Operator (equals, greater than, contains, relative date, and more), a Value or Relative Function such as N_DAYS_AGO, and a Sequence number referenced by the parent policy's Filter Logic. Commonly used to build dynamic archival criteria.</description>
+    <nameField>
+        <label>Condition Number</label>
+        <type>AutoNumber</type>
+        <displayFormat>APC-{0000}</displayFormat>
+        <startingNumber>1</startingNumber>
+    </nameField>
+    <deploymentStatus>Deployed</deploymentStatus>
+    <sharingModel>ControlledByParent</sharingModel>
+    <visibility>Public</visibility>
+</CustomObject>

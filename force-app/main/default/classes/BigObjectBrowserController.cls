@@ -121,6 +121,43 @@ public with sharing class BigObjectBrowserController {
     }
 
     /**
+     * Returns the full-record JSON snapshot captured at archive time for a Big Object row, so the
+     * viewer can render the complete record even where non-index Big Object fields are not
+     * SOQL-queryable. Matches the most recent successful archive log by Big Object + record key.
+     * @param bigObjectApiName Big Object holding the row.
+     * @param recordKey The row's index record key (from getRecords).
+     * @return The snapshot JSON string, or null when no snapshot was captured for this row.
+     */
+    @AuraEnabled(cacheable=true)
+    public static String getRecordSnapshot(String bigObjectApiName, String recordKey) {
+        try {
+            if (String.isBlank(bigObjectApiName) || String.isBlank(recordKey)) {
+                return null;
+            }
+            // Record_Snapshot__c is a LongTextArea and cannot be filtered in SOQL, so match on the
+            // record key and the Archive operation, then pick the most recent row that has a snapshot.
+            List<Big_Object_Archive_Log__c> logs = [
+                SELECT Record_Snapshot__c
+                FROM Big_Object_Archive_Log__c
+                WHERE Target_Big_Object__c = :bigObjectApiName
+                    AND Record_Key__c = :recordKey
+                    AND Operation__c = 'Archive'
+                WITH USER_MODE
+                ORDER BY CreatedDate DESC
+                LIMIT 50
+            ];
+            for (Big_Object_Archive_Log__c log : logs) {
+                if (String.isNotBlank(log.Record_Snapshot__c)) {
+                    return log.Record_Snapshot__c;
+                }
+            }
+            return null;
+        } catch (Exception e) {
+            throw new AuraHandledException('Unable to load the record snapshot: ' + e.getMessage());
+        }
+    }
+
+    /**
      * Unarchives selected rows: recreates each in the source object, then removes it from the Big
      * Object. Partial success is reported per record.
      * @param bigObjectApiName Big Object holding the rows.
@@ -142,6 +179,36 @@ public with sharing class BigObjectBrowserController {
             return BigObjectArchiveService.restoreRecords(bigObjectApiName, sourceObject, recordKeys, true);
         } catch (AuraHandledException e) {
             throw e; // preserve the original user-facing message from the delegated service
+        } catch (BigObjectBrowserException e) {
+            throw new AuraHandledException(e.getMessage());
+        } catch (Exception e) {
+            throw new AuraHandledException('Unarchive failed: ' + e.getMessage());
+        }
+    }
+
+    /**
+     * Unarchives a single row AND its related archived records as a set, re-linking the restored
+     * children to the restored parent. Delegates to UnarchiveEngine; the source object is resolved
+     * from the archive log the same way the per-record unarchive does.
+     * @param bigObjectApiName Big Object holding the root row.
+     * @param recordKey Index record key of the root row (from getRecords).
+     * @return The whole-record unarchive outcome (per-object counts, re-link status, fidelity notes).
+     */
+    @AuraEnabled
+    public static UnarchiveEngine.UnarchiveSetResult unarchiveRecordWithRelated(
+        String bigObjectApiName, String recordKey
+    ) {
+        try {
+            if (String.isBlank(bigObjectApiName)) {
+                throw new BigObjectBrowserException('A Big Object API name is required.');
+            }
+            if (String.isBlank(recordKey)) {
+                throw new BigObjectBrowserException('A record key is required.');
+            }
+            String sourceObject = resolveSourceObject(bigObjectApiName);
+            return UnarchiveEngine.unarchiveRecordWithRelated(bigObjectApiName, sourceObject, recordKey, true);
+        } catch (AuraHandledException e) {
+            throw e; // preserve the original user-facing message from the delegated engine
         } catch (BigObjectBrowserException e) {
             throw new AuraHandledException(e.getMessage());
         } catch (Exception e) {

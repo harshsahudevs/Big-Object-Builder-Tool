@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Sequence__c</fullName>
+    <label>Sequence</label>
+    <description>Order number of this condition within its policy, referenced by the parent's Filter Logic expression (e.g. the "2" in "1 AND 2").</description>
+    <inlineHelpText>The number used to reference this condition in the policy's Filter Logic.</inlineHelpText>
+    <type>Number</type>
+    <precision>4</precision>
+    <scale>0</scale>
+</CustomField>

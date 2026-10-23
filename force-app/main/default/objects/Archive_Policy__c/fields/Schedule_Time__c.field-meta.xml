@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Schedule_Time__c</fullName>
+    <label>Schedule Time</label>
+    <description>Time of day the policy runs for Daily, Weekly, and Monthly schedules. Used to build the generated CRON expression.</description>
+    <inlineHelpText>The time of day the scheduled run should start.</inlineHelpText>
+    <type>Time</type>
+</CustomField>

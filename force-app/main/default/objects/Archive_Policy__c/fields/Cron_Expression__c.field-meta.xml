@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cron_Expression__c</fullName>
+    <label>Cron Expression</label>
+    <description>Raw Salesforce CRON expression used when Schedule Type is Cron (e.g. "0 0 2 * * ?"). For Daily/Weekly/Monthly this field holds the expression generated from the other schedule fields.</description>
+    <inlineHelpText>Seconds Minutes Hours Day_of_month Month Day_of_week, e.g. 0 0 2 * * ?</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

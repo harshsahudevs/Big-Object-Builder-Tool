@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Archive_Policy__c</fullName>
+    <label>Archive Policy</label>
+    <description>The policy whose run this log records.</description>
+    <inlineHelpText>The Archive Policy that produced this execution.</inlineHelpText>
+    <type>Lookup</type>
+    <referenceTo>Archive_Policy__c</referenceTo>
+    <relationshipLabel>Execution Logs</relationshipLabel>
+    <relationshipName>Execution_Logs</relationshipName>
+    <required>false</required>
+    <deleteConstraint>SetNull</deleteConstraint>
+</CustomField>

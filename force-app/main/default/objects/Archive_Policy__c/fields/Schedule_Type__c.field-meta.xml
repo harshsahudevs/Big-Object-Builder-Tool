@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Schedule_Type__c</fullName>
+    <label>Schedule Type</label>
+    <description>How often the policy runs. Daily, Weekly, and Monthly generate a CRON expression from the Schedule Time (and Day of Week or Day of Month); Cron uses the raw Cron Expression field.</description>
+    <inlineHelpText>Daily, Weekly, or Monthly build the schedule for you; Cron uses your own expression.</inlineHelpText>
+    <type>Picklist</type>
+    <required>false</required>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Daily</fullName>
+                <default>true</default>
+                <label>Daily</label>
+            </value>
+            <value>
+                <fullName>Weekly</fullName>
+                <default>false</default>
+                <label>Weekly</label>
+            </value>
+            <value>
+                <fullName>Monthly</fullName>
+                <default>false</default>
+                <label>Monthly</label>
+            </value>
+            <value>
+                <fullName>Cron</fullName>
+                <default>false</default>
+                <label>Cron</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

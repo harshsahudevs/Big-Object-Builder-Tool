@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Last_Run__c</fullName>
+    <label>Last Run</label>
+    <description>Timestamp of the most recent execution of this policy, stamped when a run finishes. Shown on the policy dashboard.</description>
+    <inlineHelpText>When this policy last executed.</inlineHelpText>
+    <type>DateTime</type>
+</CustomField>

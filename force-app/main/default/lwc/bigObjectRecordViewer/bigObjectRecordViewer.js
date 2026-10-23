@@ -4,6 +4,8 @@ import getBigObjects from '@salesforce/apex/BigObjectBrowserController.getBigObj
 import getRecords from '@salesforce/apex/BigObjectBrowserController.getRecords';
 import unarchiveRecords from '@salesforce/apex/BigObjectBrowserController.unarchiveRecords';
 import unarchiveAll from '@salesforce/apex/BigObjectBrowserController.unarchiveAll';
+import unarchiveRecordWithRelated from '@salesforce/apex/BigObjectBrowserController.unarchiveRecordWithRelated';
+import getRecordSnapshot from '@salesforce/apex/BigObjectBrowserController.getRecordSnapshot';
 
 const VIEW_ACTION = {
     type: 'button-icon',
@@ -39,6 +41,11 @@ export default class BigObjectRecordViewer extends LightningElement {
     // Detail modal state.
     showDetail = false;
     detailRow;
+    @track detailItems = []; // label/value rows rendered in the detail modal
+    detailObjectName = '';
+    detailSnapshotLoading = false;
+    // True when only the queryable index fields are shown (no full-record snapshot was captured).
+    detailPartial = false;
 
     selectedBigObject = '';
     selectedKeys = [];
@@ -165,11 +172,82 @@ export default class BigObjectRecordViewer extends LightningElement {
     openDetail(row) {
         this.detailRow = row;
         this.showDetail = true;
+        this.detailObjectName = '';
+        this.detailPartial = false;
+        this.detailItems = [];
+        this.loadDetail(row);
+    }
+
+    // Loads the full archived record from its snapshot; falls back to the queryable index fields
+    // (shown with a note) when no snapshot was captured for the row.
+    loadDetail(row) {
+        this.detailSnapshotLoading = true;
+        getRecordSnapshot({ bigObjectApiName: this.selectedBigObject, recordKey: row.key })
+            .then((snapshotJson) => {
+                const parsed = this.parseSnapshot(snapshotJson);
+                if (parsed && parsed.fields.length) {
+                    this.detailObjectName = parsed.sourceObject || '';
+                    this.detailItems = parsed.fields;
+                    this.detailPartial = false;
+                } else {
+                    this.detailItems = this.indexFieldItems(row);
+                    this.detailPartial = true;
+                }
+            })
+            .catch(() => {
+                // Snapshot lookup failed — still show whatever the row (index fields) carries.
+                this.detailItems = this.indexFieldItems(row);
+                this.detailPartial = true;
+            })
+            .finally(() => {
+                this.detailSnapshotLoading = false;
+            });
+    }
+
+    parseSnapshot(snapshotJson) {
+        if (!snapshotJson) {
+            return null;
+        }
+        let data;
+        try {
+            data = JSON.parse(snapshotJson);
+        } catch (e) {
+            return null;
+        }
+        const fields = (data.fields || []).map((f, i) => ({
+            key: f.name || `f${i}`,
+            label: f.label || f.name,
+            value: this.formatValue(f.type, f.value)
+        }));
+        return { sourceObject: data.sourceObject, fields };
+    }
+
+    // Fallback: the queryable index-field columns already loaded in the row.
+    indexFieldItems(row) {
+        return this.fieldDefs.map((def) => ({
+            key: def.fieldName,
+            label: def.label,
+            value: this.formatValue(def.type, row[def.fieldName])
+        }));
+    }
+
+    formatValue(type, value) {
+        if (value === undefined || value === null || value === '') {
+            return '—';
+        }
+        if (type === 'date' || type === 'datetime') {
+            const d = new Date(value);
+            return isNaN(d.getTime()) ? String(value) : d.toLocaleString();
+        }
+        return String(value);
     }
 
     closeDetail() {
         this.showDetail = false;
         this.detailRow = undefined;
+        this.detailItems = [];
+        this.detailObjectName = '';
+        this.detailPartial = false;
     }
 
     // Unarchive the record currently open in the detail modal.
@@ -181,23 +259,14 @@ export default class BigObjectRecordViewer extends LightningElement {
         }
     }
 
-    // All stored field label/value pairs for the record open in the detail modal.
-    get detailFields() {
-        if (!this.detailRow) {
-            return [];
-        }
-        return this.fieldDefs.map((def) => {
-            let value = this.detailRow[def.fieldName];
-            if (value === undefined || value === null || value === '') {
-                value = '—';
-            } else if (def.type === 'date') {
-                const d = new Date(value);
-                value = isNaN(d.getTime()) ? String(value) : d.toLocaleString();
-            } else {
-                value = String(value);
-            }
-            return { key: def.fieldName, label: def.label, value };
-        });
+    get detailFieldCount() {
+        return this.detailItems.length;
+    }
+
+    get detailHeading() {
+        return this.detailObjectName
+            ? `Archived ${this.detailObjectName} record`
+            : 'Archived record';
     }
 
     handleUnarchiveSelected() {
@@ -229,29 +298,77 @@ export default class BigObjectRecordViewer extends LightningElement {
 
     confirmUnarchive() {
         const mode = this.confirmMode;
+        const rootKey = this.pendingKeys[0];
         this.showConfirm = false;
         this.isWorking = true;
 
+        // Single-record unarchive goes through the engine so the record AND its related archived
+        // records come back together (children re-linked to the restored parent). Bulk paths restore
+        // the selected/all rows of this one Big Object as-is.
         const call =
-            mode === 'all'
-                ? unarchiveAll({ bigObjectApiName: this.selectedBigObject })
-                : unarchiveRecords({
+            mode === 'single'
+                ? unarchiveRecordWithRelated({
                       bigObjectApiName: this.selectedBigObject,
-                      recordKeys: this.pendingKeys
-                  });
+                      recordKey: rootKey
+                  }).then((result) => this.processSetResult(result, rootKey))
+                : (mode === 'all'
+                      ? unarchiveAll({ bigObjectApiName: this.selectedBigObject })
+                      : unarchiveRecords({
+                            bigObjectApiName: this.selectedBigObject,
+                            recordKeys: this.pendingKeys
+                        })
+                  ).then((results) => this.processResults(results));
 
-        call.then((results) => this.processResults(results))
-            .catch((error) => {
-                this.toast('Unarchive failed', this.reduceError(error), 'error');
-            })
-            .finally(() => {
-                this.isWorking = false;
-                this.pendingKeys = [];
-                this.confirmMode = undefined;
-                // No immediate server reload: the Big Object delete runs async (Queueable), so a
-                // re-query here would race the cleanup and show the rows again. processResults()
-                // removes the restored rows from the table optimistically instead.
-            });
+        call.catch((error) => {
+            this.toast('Unarchive failed', this.reduceError(error), 'error');
+        }).finally(() => {
+            this.isWorking = false;
+            this.pendingKeys = [];
+            this.confirmMode = undefined;
+            // No immediate server reload: the Big Object delete runs async (Queueable), so a
+            // re-query here would race the cleanup and show the rows again. The result handlers
+            // remove the restored rows from the table optimistically instead.
+        });
+    }
+
+    // Handles the whole-record (engine) result: drops the restored root row and reports the set
+    // outcome — how many related records came back, re-link status, and any fidelity notes.
+    processSetResult(result, rootKey) {
+        if (!result) {
+            return;
+        }
+        if (result.rootRestored) {
+            this.rows = this.rows.filter((row) => row.key !== rootKey);
+            this.selectedKeys = [];
+            this.lastRefreshed = new Date();
+        }
+
+        const related = (result.totalRestored || 0) - (result.rootRestored ? 1 : 0);
+        const noteList = result.notes || [];
+        const noteSuffix = noteList.length ? ` Note: ${noteList[0]}` : '';
+
+        if (!result.rootRestored) {
+            const firstNote = noteList.length ? noteList[0] : 'The record could not be restored.';
+            this.toast('Unarchive failed', firstNote, 'error');
+            return;
+        }
+        if (result.totalFailed > 0) {
+            this.toast(
+                'Partially unarchived',
+                `Record restored with ${related} related record${related === 1 ? '' : 's'}; ` +
+                    `${result.totalFailed} related record${result.totalFailed === 1 ? '' : 's'} failed.${noteSuffix}`,
+                'warning'
+            );
+            return;
+        }
+        const relatedLabel = related > 0
+            ? ` and ${related} related record${related === 1 ? '' : 's'}`
+            : '';
+        this.toast(
+            'Unarchived',
+            `Record${relatedLabel} restored to the source object.${noteSuffix}`,
+            'success'
+        );
     }
 
     processResults(results) {
@@ -343,6 +460,9 @@ export default class BigObjectRecordViewer extends LightningElement {
     get confirmMessage() {
         if (this.confirmMode === 'all') {
             return 'Unarchive ALL loaded records? Each record is recreated in its source object and removed from the Big Object. This cannot be undone.';
+        }
+        if (this.confirmMode === 'single') {
+            return 'Unarchive this record and its related archived records? The record is recreated in its source object, its related records are restored and re-linked to it, and all restored rows are removed from their Big Objects. This cannot be undone.';
         }
         const count = this.pendingKeys.length;
         return `Unarchive ${count} record${count === 1 ? '' : 's'}? Each is recreated in its source object and removed from the Big Object. This cannot be undone.`;

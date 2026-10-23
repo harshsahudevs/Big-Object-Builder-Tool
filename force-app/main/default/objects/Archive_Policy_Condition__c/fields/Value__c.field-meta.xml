@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Value__c</fullName>
+    <label>Value</label>
+    <description>The comparison value. For most operators a literal (e.g. Closed, 100); for Relative Date the number paired with the Relative Function (e.g. 60 with N_DAYS_AGO); for In a comma-separated list.</description>
+    <inlineHelpText>Literal value, comma-separated list for In, or the N for a Relative Function.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

@@ -10,28 +10,34 @@
                 <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
             </template>
 
-            <template if:true={errorMessage}>
+            <template if:true={metricsError}>
                 <div class="slds-notify slds-notify_alert slds-theme_error slds-m-bottom_small" role="alert">
                     <lightning-icon icon-name="utility:error" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
-                    {errorMessage}
+                    {metricsError}
                 </div>
             </template>
 
             <!-- KPI stat tiles -->
             <div class="slds-grid slds-wrap slds-gutters slds-m-bottom_medium">
-                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                     <div class="slds-box slds-box_x-small slds-text-align_center">
                         <p class="slds-text-title_caps slds-text-color_weak">Big Objects</p>
                         <p class="slds-text-heading_large">{totalBigObjects}</p>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                     <div class="slds-box slds-box_x-small slds-text-align_center">
                         <p class="slds-text-title_caps slds-text-color_weak">Archived (approx)</p>
                         <p class="slds-text-heading_large">{totalArchived}</p>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Unarchived</p>
+                        <p class="slds-text-heading_large">{totalUnarchived}</p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                     <div class="slds-box slds-box_x-small slds-text-align_center">
                         <p class="slds-text-title_caps slds-text-color_weak">Failed Archives</p>
                         <p class="slds-text-heading_large">
@@ -39,7 +45,15 @@
                         </p>
                     </div>
                 </div>
-                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-4">
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
+                    <div class="slds-box slds-box_x-small slds-text-align_center">
+                        <p class="slds-text-title_caps slds-text-color_weak">Failed Unarchives</p>
+                        <p class="slds-text-heading_large">
+                            <span class={unarchiveFailedTextClass}>{unarchiveFailedCount}</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="slds-col slds-size_1-of-2 slds-medium-size_1-of-3">
                     <div class="slds-box slds-box_x-small slds-text-align_center">
                         <p class="slds-text-title_caps slds-text-color_weak">Usage</p>
                         <p class="slds-text-heading_large">{usagePercent}%</p>
@@ -84,6 +98,12 @@
                         disabled={isRefreshing}
                     ></lightning-button>
                 </div>
+                <template if:true={inventoryError}>
+                    <div class="slds-notify slds-notify_alert slds-theme_error slds-m-bottom_small" role="alert">
+                        <lightning-icon icon-name="utility:error" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                        {inventoryError}
+                    </div>
+                </template>
                 <template if:true={inventory.length}>
                     <lightning-datatable
                         key-field="apiName"

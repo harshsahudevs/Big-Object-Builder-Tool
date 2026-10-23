@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Batch_Size__c</fullName>
+    <label>Batch Size</label>
+    <description>Number of records processed per Batch Apex chunk. Defaults to 200; lower it for objects with heavy triggers, raise it toward 2000 for simple Big Object inserts.</description>
+    <inlineHelpText>Records per batch chunk (1-2000). Default 200.</inlineHelpText>
+    <type>Number</type>
+    <precision>4</precision>
+    <scale>0</scale>
+    <defaultValue>200</defaultValue>
+</CustomField>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Finished__c</fullName>
+    <label>Finished</label>
+    <description>Timestamp when the run completed (batch finish).</description>
+    <inlineHelpText>When the run finished.</inlineHelpText>
+    <type>DateTime</type>
+</CustomField>

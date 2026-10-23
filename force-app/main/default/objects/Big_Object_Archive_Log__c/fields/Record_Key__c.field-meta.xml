@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Key__c</fullName>
+    <label>Record Key</label>
+    <description>The Big Object row index key (index field values joined by a separator) for the archived record. Correlates an archive-log row to the Big Object row the viewer displays, so the stored Record Snapshot can be looked up by key.</description>
+    <inlineHelpText>Set automatically at archive time to match the Big Object row key. Used to find the full-record snapshot when viewing an archived record.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

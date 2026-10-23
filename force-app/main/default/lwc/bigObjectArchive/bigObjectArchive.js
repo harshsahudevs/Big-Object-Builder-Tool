@@ -2,7 +2,7 @@ import { LightningElement, api } from 'lwc';
 import { NavigationMixin } from 'lightning/navigation';
 import { ShowToastEvent } from 'lightning/platformShowToastEvent';
 import archiveAndDeleteRecord from '@salesforce/apex/BigObjectArchiveService.archiveAndDeleteRecord';
-import archiveRecord from '@salesforce/apex/BigObjectArchiveService.archiveRecord';
+import archiveRecordWithRelated from '@salesforce/apex/RecordArchivingEngine.archiveRecordWithRelated';
 import getMappingOverview from '@salesforce/apex/BigObjectSettingsController.getMappingOverview';
 
 export default class BigObjectArchive extends NavigationMixin(LightningElement) {
@@ -15,6 +15,11 @@ export default class BigObjectArchive extends NavigationMixin(LightningElement) 
     targets = []; // [{ label, value, status, isPartial }]
     selectedBigObject;
     error;
+
+    // Result of the last whole-record archive (per-object counts + skipped related objects).
+    resultSummaries = [];
+    skippedObjects = [];
+    hasResult = false;
 
     connectedCallback() {
         this.loadTargets();
@@ -79,29 +84,62 @@ export default class BigObjectArchive extends NavigationMixin(LightningElement) 
         this.selectedBigObject = event.detail.value;
     }
 
-    // Backup: copy the record into the Big Object WITHOUT deleting the source record.
+    // Whole-record archive via the Record Archiving Engine: archives this record AND its direct
+    // related child records (each into its own Big Object). Source records are kept (no delete).
     handleBackup() {
         if (!this.selectedBigObject) {
             return;
         }
         const target = this.selectedBigObject;
         this.isWorking = true;
-        archiveRecord({ recordId: this.recordId, targetBigObjectApiName: target })
+        this.hasResult = false;
+        archiveRecordWithRelated({ rootRecordId: this.recordId, rootBigObjectApiName: target })
             .then((result) => {
-                if (result && result.isSuccess) {
-                    this.showToast('Backed up', `Record copied to ${target}. The source record was kept.`, 'success');
+                this.applyResult(result);
+                const archived = result ? result.totalArchived : 0;
+                const failed = result ? result.totalFailed : 0;
+                const objects = result && result.summaries ? result.summaries.length : 0;
+                if (failed === 0) {
+                    this.showToast(
+                        'Archived',
+                        `${archived} record${archived === 1 ? '' : 's'} archived across ${objects} object${objects === 1 ? '' : 's'} (record + related). Source records kept.`,
+                        'success'
+                    );
                 } else {
                     this.showToast(
-                        'Backup failed',
-                        result && result.errorMessage ? result.errorMessage : 'Backup failed.',
-                        'error'
+                        'Archived with issues',
+                        `${archived} archived, ${failed} failed. See the result breakdown below.`,
+                        archived === 0 ? 'error' : 'warning'
                     );
                 }
             })
-            .catch((error) => this.showToast('Backup failed', this.reduceError(error), 'error'))
+            .catch((error) => this.showToast('Archive failed', this.reduceError(error), 'error'))
             .finally(() => {
                 this.isWorking = false;
             });
+    }
+
+    // Flattens the engine result into display rows for the result panel.
+    applyResult(result) {
+        const summaries = (result && result.summaries) || [];
+        this.resultSummaries = summaries.map((s) => ({
+            key: s.sourceObject,
+            label: `${s.sourceLabel || s.sourceObject}${s.isRoot ? ' (this record)' : ''}`,
+            bigObject: s.bigObject,
+            detail: `${s.archivedCount} archived${s.failedCount ? `, ${s.failedCount} failed` : ''}`,
+            hasError: s.failedCount > 0,
+            errorMessage: s.errorMessage
+        }));
+        this.skippedObjects = (result && result.skippedObjects) || [];
+        this.hasResult = this.resultSummaries.length > 0 || this.skippedObjects.length > 0;
+    }
+
+    get hasSkipped() {
+        return this.skippedObjects && this.skippedObjects.length > 0;
+    }
+
+    get skippedLabel() {
+        return this.skippedObjects.join(', ');
     }
 
     handleArchiveClick() {

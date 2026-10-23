@@ -1,0 +1,218 @@
+<template>
+    <lightning-card title="Archive Policy Engine" icon-name="standard:record_lookup">
+        <div slot="actions">
+            <template if:true={isDashboard}>
+                <lightning-button variant="brand" label="New Policy" icon-name="utility:add" onclick={openNew}></lightning-button>
+            </template>
+        </div>
+
+        <div class="slds-p-horizontal_medium slds-p-bottom_medium">
+            <template if:true={isWorking}>
+                <lightning-spinner alternative-text="Working" size="small"></lightning-spinner>
+            </template>
+
+            <template if:true={errorMessage}>
+                <div class="slds-notify slds-notify_alert slds-theme_error slds-m-bottom_small" role="alert">
+                    <lightning-icon icon-name="utility:error" variant="inverse" size="x-small" class="slds-m-right_x-small"></lightning-icon>
+                    {errorMessage}
+                </div>
+            </template>
+
+            <!-- ============ DASHBOARD ============ -->
+            <template if:true={isDashboard}>
+                <template if:true={isLoading}>
+                    <lightning-spinner alternative-text="Loading policies" size="small"></lightning-spinner>
+                </template>
+                <template if:true={hasPolicies}>
+                    <lightning-datatable
+                        key-field="id"
+                        data={policies}
+                        columns={columns}
+                        hide-checkbox-column
+                        onrowaction={handleRowAction}
+                    ></lightning-datatable>
+                </template>
+                <template if:false={hasPolicies}>
+                    <template if:false={isLoading}>
+                        <div class="slds-illustration slds-illustration_small slds-p-around_large slds-text-align_center">
+                            <p class="slds-text-heading_medium">No archive policies yet</p>
+                            <p class="slds-text-body_regular slds-text-color_weak slds-p-top_x-small">
+                                Create a policy to define what gets archived, how, and when.
+                            </p>
+                            <lightning-button class="slds-m-top_small" variant="brand" label="New Policy" icon-name="utility:add" onclick={openNew}></lightning-button>
+                        </div>
+                    </template>
+                </template>
+            </template>
+
+            <!-- ============ WIZARD ============ -->
+            <template if:true={isWizard}>
+                <h2 class="slds-text-heading_small slds-m-bottom_small">{wizardTitle}</h2>
+                <lightning-progress-indicator current-step={currentStep} type="base" has-error="false">
+                    <lightning-progress-step label="Basic Info" value="1"></lightning-progress-step>
+                    <lightning-progress-step label="Filter Builder" value="2"></lightning-progress-step>
+                    <lightning-progress-step label="Cascade & Settings" value="3"></lightning-progress-step>
+                    <lightning-progress-step label="Scheduling" value="4"></lightning-progress-step>
+                </lightning-progress-indicator>
+
+                <div class="slds-box slds-box_x-small slds-m-top_medium">
+                    <!-- Step 1: Basic Info -->
+                    <template if:true={isStep1}>
+                        <lightning-input label="Policy Name" value={policy.Name} data-field="Name" onchange={handlePolicyChange} required></lightning-input>
+                        <lightning-combobox label="Target Object" value={policy.Target_Object__c} placeholder="Select an object"
+                            options={objectOptions} data-field="Target_Object__c" onchange={handlePolicyChange} required></lightning-combobox>
+                        <lightning-combobox label="Action Type" value={policy.Action_Type__c}
+                            options={actionOptions} data-field="Action_Type__c" onchange={handlePolicyChange}></lightning-combobox>
+                        <template if:true={showBigObjectField}>
+                            <lightning-input label="Target Big Object (API name ending in __b)" value={policy.Target_Big_Object__c}
+                                data-field="Target_Big_Object__c" onchange={handlePolicyChange}></lightning-input>
+                        </template>
+                    </template>
+
+                    <!-- Step 2: Filter Builder -->
+                    <template if:true={isStep2}>
+                        <div class="slds-grid slds-grid_align-spread slds-m-bottom_x-small">
+                            <span class="slds-text-title_caps">Conditions</span>
+                            <lightning-button label="Add Condition" icon-name="utility:add" onclick={addCondition}></lightning-button>
+                        </div>
+                        <template for:each={decoratedConditions} for:item="c">
+                            <div key={c.key} class="slds-grid slds-gutters_x-small slds-grid_vertical-align-end slds-m-bottom_x-small">
+                                <div class="slds-col slds-size_1-of-12 slds-text-align_center">
+                                    <span class="slds-badge">{c.sequence}</span>
+                                </div>
+                                <div class="slds-col slds-size_3-of-12">
+                                    <lightning-combobox label="Field" variant="label-hidden" value={c.field} options={fieldOptions}
+                                        data-key={c.key} data-prop="field" onchange={handleConditionChange}></lightning-combobox>
+                                </div>
+                                <div class="slds-col slds-size_2-of-12">
+                                    <lightning-combobox label="Operator" variant="label-hidden" value={c.operator} options={operatorOptions}
+                                        data-key={c.key} data-prop="operator" onchange={handleConditionChange}></lightning-combobox>
+                                </div>
+                                <template if:true={c.showRelative}>
+                                    <div class="slds-col slds-size_2-of-12">
+                                        <lightning-combobox label="Function" variant="label-hidden" value={c.relativeFunction} options={relativeOptions}
+                                            data-key={c.key} data-prop="relativeFunction" onchange={handleConditionChange}></lightning-combobox>
+                                    </div>
+                                </template>
+                                <div class="slds-col">
+                                    <lightning-input label="Value" variant="label-hidden" value={c.value}
+                                        data-key={c.key} data-prop="value" onchange={handleConditionChange}></lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-12">
+                                    <lightning-button-icon icon-name="utility:delete" alternative-text="Remove" title="Remove"
+                                        data-key={c.key} onclick={removeCondition}></lightning-button-icon>
+                                </div>
+                            </div>
+                        </template>
+                        <lightning-input label="Filter Logic (e.g. 1 AND (2 OR 3))" value={policy.Filter_Logic__c}
+                            data-field="Filter_Logic__c" onchange={handlePolicyChange} class="slds-m-top_x-small"></lightning-input>
+                        <div class="slds-m-top_small slds-grid slds-grid_vertical-align-center">
+                            <lightning-button label="Preview Matching Records" icon-name="utility:preview" onclick={runPreview}></lightning-button>
+                            <template if:true={previewRan}>
+                                <span class="slds-badge slds-theme_success slds-m-left_small">{previewLabel}</span>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- Step 3: Cascade & Settings -->
+                    <template if:true={isStep3}>
+                        <lightning-input type="checkbox" label="Cascade: also archive direct child records"
+                            checked={policy.Cascade_Children__c} data-field="Cascade_Children__c" onchange={handlePolicyChange}></lightning-input>
+                        <lightning-input type="number" label="Batch Size" value={policy.Batch_Size__c} min="1" max="2000"
+                            data-field="Batch_Size__c" onchange={handlePolicyChange}></lightning-input>
+                        <p class="slds-text-body_small slds-text-color_weak slds-p-top_x-small">
+                            Cascade Move runs one record per batch chunk to keep Big Object writes within callout limits.
+                        </p>
+                    </template>
+
+                    <!-- Step 4: Scheduling -->
+                    <template if:true={isStep4}>
+                        <lightning-combobox label="Schedule Type" value={policy.Schedule_Type__c} options={scheduleOptions}
+                            data-field="Schedule_Type__c" onchange={handlePolicyChange}></lightning-combobox>
+                        <template if:true={showTime}>
+                            <lightning-input type="time" label="Schedule Time" value={policy.Schedule_Time__c}
+                                data-field="Schedule_Time__c" onchange={handlePolicyChange}></lightning-input>
+                        </template>
+                        <template if:true={isWeekly}>
+                            <lightning-combobox label="Day of Week" value={policy.Day_Of_Week__c} options={dayOptions}
+                                data-field="Day_Of_Week__c" onchange={handlePolicyChange}></lightning-combobox>
+                        </template>
+                        <template if:true={isMonthly}>
+                            <lightning-input type="number" label="Day of Month" value={policy.Day_Of_Month__c} min="1" max="28"
+                                data-field="Day_Of_Month__c" onchange={handlePolicyChange}></lightning-input>
+                        </template>
+                        <template if:true={isCron}>
+                            <lightning-input label="Cron Expression (e.g. 0 0 2 * * ?)" value={policy.Cron_Expression__c}
+                                data-field="Cron_Expression__c" onchange={handlePolicyChange}></lightning-input>
+                        </template>
+                        <p class="slds-text-body_small slds-text-color_weak slds-p-top_x-small">
+                            Saving stores the schedule. Activate the policy from the dashboard to schedule it.
+                        </p>
+                    </template>
+                </div>
+
+                <!-- Wizard footer -->
+                <div class="slds-grid slds-grid_align-spread slds-m-top_medium">
+                    <lightning-button label="Cancel" onclick={cancelWizard}></lightning-button>
+                    <div>
+                        <template if:false={isFirstStep}>
+                            <lightning-button label="Back" icon-name="utility:chevronleft" onclick={prevStep} class="slds-m-right_x-small"></lightning-button>
+                        </template>
+                        <template if:false={isLastStep}>
+                            <lightning-button variant="brand" label="Next" icon-name="utility:chevronright" icon-position="right" onclick={nextStep}></lightning-button>
+                        </template>
+                        <template if:true={isLastStep}>
+                            <lightning-button variant="brand" label="Save Policy" icon-name="utility:save" onclick={saveWizard}></lightning-button>
+                        </template>
+                    </div>
+                </div>
+            </template>
+        </div>
+    </lightning-card>
+
+    <!-- ============ LOGS MODAL ============ -->
+    <template if:true={showLogs}>
+        <section role="dialog" tabindex="-1" aria-modal="true" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <lightning-button-icon icon-name="utility:close" variant="bare-inverse" onclick={closeLogs}
+                        alternative-text="Close" title="Close" class="slds-modal__close"></lightning-button-icon>
+                    <h2 class="slds-modal__title slds-hyphenate">Execution Logs — {logsPolicyName}</h2>
+                </header>
+                <div class="slds-modal__content slds-var-p-around_medium">
+                    <template if:true={hasLogs}>
+                        <table class="slds-table slds-table_cell-buffer slds-table_bordered">
+                            <thead>
+                                <tr class="slds-line-height_reset">
+                                    <th>Run</th><th>Status</th><th>Type</th><th>Processed</th>
+                                    <th>Success</th><th>Failure</th><th>Duration (s)</th><th>Error</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template for:each={logs} for:item="log">
+                                    <tr key={log.Id}>
+                                        <td>{log.Name}</td>
+                                        <td>{log.Status__c}</td>
+                                        <td>{log.Execution_Type__c}</td>
+                                        <td>{log.Processed__c}</td>
+                                        <td>{log.Success__c}</td>
+                                        <td>{log.Failure__c}</td>
+                                        <td>{log.Duration_Seconds__c}</td>
+                                        <td class="slds-cell-wrap">{log.Error_Summary__c}</td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                    </template>
+                    <template if:false={hasLogs}>
+                        <p class="slds-text-body_regular slds-text-color_weak">No runs recorded for this policy yet.</p>
+                    </template>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button label="Close" onclick={closeLogs}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

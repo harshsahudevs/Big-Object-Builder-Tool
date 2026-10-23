@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Archive_Policy__c</fullName>
+    <label>Archive Policy</label>
+    <description>The parent Archive Policy this condition belongs to.</description>
+    <type>MasterDetail</type>
+    <referenceTo>Archive_Policy__c</referenceTo>
+    <relationshipLabel>Conditions</relationshipLabel>
+    <relationshipName>Conditions</relationshipName>
+    <relationshipOrder>0</relationshipOrder>
+    <reparentableMasterDetail>false</reparentableMasterDetail>
+    <writeRequiresMasterRead>false</writeRequiresMasterRead>
+</CustomField>

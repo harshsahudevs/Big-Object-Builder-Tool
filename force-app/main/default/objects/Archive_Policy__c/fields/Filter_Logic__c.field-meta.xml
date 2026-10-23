@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Filter_Logic__c</fullName>
+    <label>Filter Logic</label>
+    <description>Boolean expression combining the policy's conditions by their Sequence numbers, e.g. "1 AND (2 OR 3)". When blank, all conditions are combined with AND.</description>
+    <inlineHelpText>Combine conditions by sequence number, e.g. 1 AND (2 OR 3). Leave blank to AND all conditions.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

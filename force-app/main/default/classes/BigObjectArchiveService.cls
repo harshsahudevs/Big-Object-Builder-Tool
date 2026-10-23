@@ -28,12 +28,29 @@ public with sharing class BigObjectArchiveService {
         @AuraEnabled public String errorMessage;
         @AuraEnabled public String bigObjectRecordKey;
         @AuraEnabled public Boolean sourceDeleted;
+        // JSON snapshot of the full archived record, persisted to the log for the viewer to render.
+        public String recordSnapshot;
 
         public ArchiveResult(Id sourceRecordId) {
             this.sourceRecordId = sourceRecordId;
             this.isSuccess = false;
             this.sourceDeleted = false;
         }
+    }
+
+    /** Full-record snapshot persisted (as JSON) to the archive log so the viewer can render it. */
+    private class RecordSnapshot {
+        String sourceObject;
+        Long capturedAt;
+        List<SnapshotField> fields = new List<SnapshotField>();
+    }
+
+    /** One field within a RecordSnapshot: enough for the viewer to render a record-page row. */
+    private class SnapshotField {
+        String name;
+        String label;
+        String type;
+        String value;
     }
 
     /**
@@ -96,6 +113,26 @@ public with sharing class BigObjectArchiveService {
     public static List<ArchiveResult> archiveRecords(
         Set<Id> recordIds, String sourceObjectApiName, String targetBigObjectApiName
     ) {
+        List<ArchiveResult> results = insertIntoBigObject(recordIds, sourceObjectApiName, targetBigObjectApiName);
+        applyArchiveSideEffects(sourceObjectApiName, targetBigObjectApiName, results);
+        return results;
+    }
+
+    /**
+     * Big Object insert ONLY — queries the source records and writes rows with insertImmediate, but
+     * does NOT stamp the source or write archive logs. Each call is a SOQL query plus an
+     * insertImmediate callout and performs no regular DML, so it can be called repeatedly in one
+     * transaction before any regular DML. This is what lets RecordArchivingEngine archive several
+     * objects together without hitting "callout after pending uncommitted work". Callers MUST run
+     * applyArchiveSideEffects afterwards (once all inserts are done) to stamp and log.
+     * @param recordIds Source record Ids (all of sourceObjectApiName).
+     * @param sourceObjectApiName API name of the source object.
+     * @param targetBigObjectApiName API name of the destination Big Object.
+     * @return One ArchiveResult per source record (with bigObjectRecordKey populated).
+     */
+    public static List<ArchiveResult> insertIntoBigObject(
+        Set<Id> recordIds, String sourceObjectApiName, String targetBigObjectApiName
+    ) {
         validateInputs(recordIds, sourceObjectApiName, targetBigObjectApiName);
 
         Schema.DescribeSObjectResult sourceDescribe = describeObject(sourceObjectApiName);
@@ -110,7 +147,13 @@ public with sharing class BigObjectArchiveService {
         // Required (non-nillable) Big Object fields form the index / primary key.
         List<String> keyFieldApiNames = getKeyFieldApiNames(targetDescribe, fieldMap.keySet());
 
-        List<SObject> sourceRecords = querySourceRecords(sourceObjectApiName, fieldMap.values(), recordIds);
+        // The snapshot captures the WHOLE source record (every readable field), not just the subset
+        // that maps into the Big Object — so the viewer can show the full record for any object.
+        List<String> snapshotFields = buildSnapshotFieldList(sourceDescribe);
+        Set<String> queryFields = new Set<String>();
+        queryFields.addAll(fieldMap.values());
+        queryFields.addAll(snapshotFields);
+        List<SObject> sourceRecords = querySourceRecords(sourceObjectApiName, queryFields, recordIds);
 
         // Build Big Object rows, keeping arrays index-aligned so SaveResults map back to source Ids.
         List<SObject> bigObjectRows = new List<SObject>();
@@ -119,6 +162,7 @@ public with sharing class BigObjectArchiveService {
 
         SObjectType targetType = targetDescribe.getSObjectType();
         Map<String, Schema.SObjectField> targetFieldMap = targetDescribe.fields.getMap();
+        Map<Id, String> snapshotBySourceId = new Map<Id, String>();
         for (SObject source : sourceRecords) {
             SObject row = targetType.newSObject();
             for (String bigField : fieldMap.keySet()) {
@@ -129,15 +173,41 @@ public with sharing class BigObjectArchiveService {
             bigObjectRows.add(row);
             alignedSourceIds.add(source.Id);
             keyBySourceId.put(source.Id, recordKey);
+            snapshotBySourceId.put(source.Id, buildRecordSnapshot(sourceDescribe, source, snapshotFields));
         }
 
         Map<Id, ArchiveResult> resultsBySourceId = insertBigObjectRows(
             bigObjectRows, alignedSourceIds, keyBySourceId);
+        for (Id sourceId : resultsBySourceId.keySet()) {
+            resultsBySourceId.get(sourceId).recordSnapshot = snapshotBySourceId.get(sourceId);
+        }
+        return resultsBySourceId.values();
+    }
 
+    /**
+     * Post-insert side effects (regular DML): stamps archive-tracking fields on successfully
+     * archived source records and writes one archive-log row per attempt. Run this only AFTER all
+     * insertIntoBigObject calls in the transaction, since regular DML before a Big Object
+     * insertImmediate callout throws "pending uncommitted work".
+     * @param sourceObjectApiName API name of the source object the results belong to.
+     * @param targetBigObjectApiName API name of the destination Big Object.
+     * @param results The ArchiveResults returned by insertIntoBigObject for this object.
+     */
+    public static void applyArchiveSideEffects(
+        String sourceObjectApiName, String targetBigObjectApiName, List<ArchiveResult> results
+    ) {
+        if (results == null || results.isEmpty()) {
+            return;
+        }
+        Schema.DescribeSObjectResult sourceDescribe = describeObject(sourceObjectApiName);
+        Map<Id, ArchiveResult> resultsBySourceId = new Map<Id, ArchiveResult>();
+        Map<Id, String> keyBySourceId = new Map<Id, String>();
+        for (ArchiveResult result : results) {
+            resultsBySourceId.put(result.sourceRecordId, result);
+            keyBySourceId.put(result.sourceRecordId, result.bigObjectRecordKey);
+        }
         stampArchivedSourceRecords(sourceDescribe, resultsBySourceId, keyBySourceId);
         writeArchiveLogs(sourceObjectApiName, targetBigObjectApiName, resultsBySourceId);
-
-        return resultsBySourceId.values();
     }
 
     // =====================================================================
@@ -239,6 +309,87 @@ public with sharing class BigObjectArchiveService {
     @AuraEnabled
     public static List<RestoreResult> restoreRecords(
         String bigObjectApiName, String sourceObjectApiName, List<String> recordKeys, Boolean deleteFromBigObject
+    ) {
+        return restoreRecordsInternal(bigObjectApiName, sourceObjectApiName, recordKeys, deleteFromBigObject, null);
+    }
+
+    /**
+     * Restore variant used by the Unarchive Engine. Applies sourceFieldOverrides to every restored
+     * record AFTER field mapping — used to re-link a child to its newly-restored parent (the parent
+     * lookup is overridden with the parent's new Id). Override entries whose field is not createable
+     * on the source object are ignored.
+     * @param bigObjectApiName Big Object holding the archived rows.
+     * @param sourceObjectApiName Object to recreate records in.
+     * @param recordKeys Big Object row index keys to restore.
+     * @param deleteFromBigObject When true, deletes successfully restored Big Object rows.
+     * @param sourceFieldOverrides source field API name -> value to force on every restored record.
+     * @return One RestoreResult per key.
+     */
+    public static List<RestoreResult> restoreRecordsWithOverrides(
+        String bigObjectApiName, String sourceObjectApiName, List<String> recordKeys,
+        Boolean deleteFromBigObject, Map<String, Object> sourceFieldOverrides
+    ) {
+        return restoreRecordsInternal(
+            bigObjectApiName, sourceObjectApiName, recordKeys, deleteFromBigObject, sourceFieldOverrides);
+    }
+
+    /**
+     * Scans a Big Object (bounded) and returns record key -> the value of one field. The Unarchive
+     * Engine uses this to read the root's original record Id and to find child rows whose stored
+     * parent Id matches it. Self-heals phantom describe columns like the restore query; if the
+     * requested field itself is not queryable here, every value comes back null (the caller then
+     * reports that re-linking is not possible in this org).
+     * @param bigObjectApiName Big Object to scan.
+     * @param fieldApiName Big Object field whose value to return per row.
+     * @return record key -> field value (value is null when the field is not queryable).
+     */
+    public static Map<String, Object> scanKeyedFieldValues(String bigObjectApiName, String fieldApiName) {
+        Schema.DescribeSObjectResult targetDescribe = describeObject(bigObjectApiName);
+        List<String> indexFields = getAllIndexFields(targetDescribe);
+        List<String> selectFields = new List<String>();
+        Set<String> added = new Set<String>();
+        for (String field : indexFields) {
+            if (added.add(field)) {
+                selectFields.add(field);
+            }
+        }
+        if (added.add(fieldApiName)) {
+            selectFields.add(fieldApiName);
+        }
+
+        Map<String, Object> valueByKey = new Map<String, Object>();
+        Boolean fieldSelected = true;
+        Integer attemptsLeft = selectFields.size() + 1;
+        while (true) {
+            String soql = 'SELECT ' + String.join(selectFields, ', ')
+                + ' FROM ' + targetDescribe.getName()
+                + (indexFields.isEmpty() ? '' : ' ORDER BY ' + String.join(indexFields, ', '))
+                + ' LIMIT 10000';
+            try {
+                for (SObject row : Database.query(soql, AccessLevel.USER_MODE)) {
+                    String key = computeKeyForRow(row, indexFields);
+                    valueByKey.put(key, fieldSelected ? row.get(fieldApiName) : null);
+                }
+                break;
+            } catch (QueryException qe) {
+                String badColumn = extractMissingColumn(qe.getMessage());
+                attemptsLeft--;
+                Boolean removed = (badColumn != null) && removeFieldIgnoreCase(selectFields, badColumn);
+                removeFieldIgnoreCase(indexFields, badColumn);
+                if (badColumn != null && badColumn.equalsIgnoreCase(fieldApiName)) {
+                    fieldSelected = false;
+                }
+                if (!removed || selectFields.isEmpty() || attemptsLeft <= 0) {
+                    throw qe;
+                }
+            }
+        }
+        return valueByKey;
+    }
+
+    private static List<RestoreResult> restoreRecordsInternal(
+        String bigObjectApiName, String sourceObjectApiName, List<String> recordKeys,
+        Boolean deleteFromBigObject, Map<String, Object> sourceFieldOverrides
     ) {
         try {
             if (String.isBlank(bigObjectApiName) || String.isBlank(sourceObjectApiName)) {
@@ -588,6 +739,7 @@ public with sharing class BigObjectArchiveService {
                 Source_Object__c = sourceObject,
                 Target_Big_Object__c = bigObject,
                 Status__c = result.isSuccess == true ? 'Success' : 'Failed',
+                Operation__c = 'Restore',
                 Error_Message__c = result.errorMessage,
                 Archived_By__c = UserInfo.getUserId(),
                 Archived_Date__c = System.now()
@@ -724,6 +876,78 @@ public with sharing class BigObjectArchiveService {
     // Query + Big Object insert
     // ---------------------------------------------------------------------
 
+    /**
+     * Builds a JSON snapshot of the archived field values (API name, label, type, value) so the
+     * viewer can render the full record even where non-index Big Object fields are not queryable.
+     * Snapshots exactly the fields that were archived, ordered by label for a record-page layout.
+     */
+    /**
+     * Every readable, scalar field on the source object — the set captured in the display snapshot.
+     * Skips compound (Address/Location) and binary (base64) fields, which don't render as text.
+     */
+    @TestVisible
+    private static List<String> buildSnapshotFieldList(Schema.DescribeSObjectResult sourceDescribe) {
+        List<String> fields = new List<String>();
+        for (Schema.SObjectField token : sourceDescribe.fields.getMap().values()) {
+            Schema.DescribeFieldResult describe = token.getDescribe();
+            Schema.DisplayType fieldType = describe.getType();
+            if (!describe.isAccessible()
+                || fieldType == Schema.DisplayType.ADDRESS
+                || fieldType == Schema.DisplayType.LOCATION
+                || fieldType == Schema.DisplayType.BASE64) {
+                continue;
+            }
+            fields.add(describe.getName());
+        }
+        return fields;
+    }
+
+    @TestVisible
+    private static String buildRecordSnapshot(
+        Schema.DescribeSObjectResult sourceDescribe, SObject source, Iterable<String> sourceFieldNames
+    ) {
+        Map<String, Schema.SObjectField> fieldMap = sourceDescribe.fields.getMap();
+        RecordSnapshot snapshot = new RecordSnapshot();
+        snapshot.sourceObject = sourceDescribe.getName();
+        snapshot.capturedAt = System.now().getTime();
+        // Keep the serialized snapshot within the LongTextArea limit: cap each value and stop once
+        // the accumulated value size nears the budget (very long multi-field records only).
+        Integer remainingBudget = 120000;
+        for (String fieldName : sourceFieldNames) {
+            Schema.SObjectField token = fieldMap.get(fieldName.toLowerCase());
+            if (token == null) {
+                continue;
+            }
+            Schema.DescribeFieldResult describe = token.getDescribe();
+            SnapshotField entry = new SnapshotField();
+            entry.name = describe.getName();
+            entry.label = describe.getLabel();
+            entry.type = String.valueOf(describe.getType()).toLowerCase();
+            Object value = source.get(describe.getName());
+            String stringValue = (value == null) ? null : String.valueOf(value);
+            if (stringValue != null && stringValue.length() > 2000) {
+                stringValue = stringValue.substring(0, 2000) + '…';
+            }
+            entry.value = stringValue;
+            snapshot.fields.add(entry);
+            remainingBudget -= (stringValue == null ? 0 : stringValue.length()) + 60;
+            if (remainingBudget <= 0) {
+                break;
+            }
+        }
+        snapshot.fields.sort(new SnapshotFieldComparator());
+        return JSON.serialize(snapshot, true);
+    }
+
+    /** Orders snapshot fields by label so the viewer renders a stable, readable record page. */
+    private class SnapshotFieldComparator implements Comparator<SnapshotField> {
+        public Integer compare(SnapshotField a, SnapshotField b) {
+            String labelA = (a.label == null) ? '' : a.label.toLowerCase();
+            String labelB = (b.label == null) ? '' : b.label.toLowerCase();
+            return labelA.compareTo(labelB);
+        }
+    }
+
     private static List<SObject> querySourceRecords(
         String sourceObject, Iterable<String> fields, Set<Id> recordIds
     ) {
@@ -827,6 +1051,14 @@ public with sharing class BigObjectArchiveService {
         }
     }
 
+    /** Caps the record key at the Record_Key__c Text(255) limit so the log insert never fails. */
+    private static String truncateKey(String recordKey) {
+        if (recordKey == null) {
+            return null;
+        }
+        return recordKey.length() > 255 ? recordKey.substring(0, 255) : recordKey;
+    }
+
     /** Writes one Big_Object_Archive_Log__c row per attempt. */
     private static void writeArchiveLogs(
         String sourceObject, String targetBigObject, Map<Id, ArchiveResult> resultsBySourceId
@@ -838,7 +1070,10 @@ public with sharing class BigObjectArchiveService {
                 Source_Object__c = sourceObject,
                 Target_Big_Object__c = targetBigObject,
                 Status__c = result.isSuccess == true ? 'Success' : 'Failed',
+                Operation__c = 'Archive',
                 Error_Message__c = result.errorMessage,
+                Record_Key__c = truncateKey(result.bigObjectRecordKey),
+                Record_Snapshot__c = result.isSuccess == true ? result.recordSnapshot : null,
                 Archived_By__c = UserInfo.getUserId(),
                 Archived_Date__c = System.now()
             ));

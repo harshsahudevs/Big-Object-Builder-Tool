@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Target_Object__c</fullName>
+    <label>Target Object</label>
+    <description>API name of the object whose records this policy archives (e.g. Case, Lead, My_Object__c).</description>
+    <inlineHelpText>The API name of the object to archive records from.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

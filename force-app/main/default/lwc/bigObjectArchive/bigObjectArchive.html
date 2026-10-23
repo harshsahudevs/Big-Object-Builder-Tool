@@ -23,7 +23,8 @@
             <!-- Archive / backup controls -->
             <template if:true={hasTargets}>
                 <p class="slds-text-body_small slds-text-color_weak slds-m-bottom_small">
-                    Choose a Big Object, then back up (keep this record) or archive it (remove this record).
+                    Choose a Big Object, then back up the whole record (this record + its related records,
+                    source kept) or archive &amp; delete just this record.
                 </p>
 
                 <lightning-combobox
@@ -48,7 +49,8 @@
                 <div class="slds-grid slds-gutters_x-small">
                     <div class="slds-col slds-grow-none">
                         <lightning-button
-                            label="Back up this record"
+                            label="Back up whole record"
+                            title="Archive this record and its related records"
                             icon-name="utility:copy"
                             onclick={handleBackup}
                             disabled={actionsDisabled}
@@ -67,6 +69,33 @@
 
                 <template if:true={isWorking}>
                     <lightning-spinner alternative-text="Working" size="small" class="slds-m-top_small"></lightning-spinner>
+                </template>
+
+                <!-- Whole-record archive result breakdown -->
+                <template if:true={hasResult}>
+                    <div class="slds-box slds-box_x-small slds-m-top_medium">
+                        <p class="slds-text-title_caps slds-text-color_weak slds-m-bottom_x-small">Archive result</p>
+                        <ul class="slds-has-dividers_bottom-space">
+                            <template for:each={resultSummaries} for:item="row">
+                                <li key={row.key} class="slds-item">
+                                    <div class="slds-grid slds-grid_align-spread">
+                                        <span class="slds-truncate" title={row.label}>{row.label}</span>
+                                        <span class="slds-text-body_small">{row.detail}</span>
+                                    </div>
+                                    <p class="slds-text-body_small slds-text-color_weak">→ {row.bigObject}</p>
+                                    <template if:true={row.hasError}>
+                                        <p class="slds-text-body_small slds-text-color_error">{row.errorMessage}</p>
+                                    </template>
+                                </li>
+                            </template>
+                        </ul>
+                        <template if:true={hasSkipped}>
+                            <p class="slds-text-body_small slds-text-color_weak slds-m-top_x-small">
+                                <lightning-icon icon-name="utility:info" size="xx-small" class="slds-m-right_xx-small"></lightning-icon>
+                                Skipped (no Big Object configured): {skippedLabel}. Create their Big Objects to include them.
+                            </p>
+                        </template>
+                    </div>
                 </template>
             </template>
         </div>

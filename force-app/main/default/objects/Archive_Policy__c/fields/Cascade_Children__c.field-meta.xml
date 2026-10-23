@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Cascade_Children__c</fullName>
+    <label>Cascade Children</label>
+    <description>When enabled, the policy also archives each matching record's direct (one-level) related child records through the Record Archiving Engine.</description>
+    <inlineHelpText>Archive direct child records along with each matching parent record.</inlineHelpText>
+    <type>Checkbox</type>
+    <defaultValue>false</defaultValue>
+</CustomField>

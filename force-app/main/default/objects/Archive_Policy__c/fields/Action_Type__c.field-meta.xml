@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Action_Type__c</fullName>
+    <label>Action Type</label>
+    <description>What the policy does with matching records: Soft Delete flags them, Hard Delete removes them, Move to Big Object archives them into a Big Object, External Store exports them to an external system.</description>
+    <inlineHelpText>Choose how matching records are archived. Move to Big Object requires a Target Big Object.</inlineHelpText>
+    <type>Picklist</type>
+    <required>false</required>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Soft Delete</fullName>
+                <default>true</default>
+                <label>Soft Delete</label>
+            </value>
+            <value>
+                <fullName>Hard Delete</fullName>
+                <default>false</default>
+                <label>Hard Delete</label>
+            </value>
+            <value>
+                <fullName>Move to Big Object</fullName>
+                <default>false</default>
+                <label>Move to Big Object</label>
+            </value>
+            <value>
+                <fullName>External Store</fullName>
+                <default>false</default>
+                <label>External Store</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

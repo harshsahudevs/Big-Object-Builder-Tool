@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Operator__c</fullName>
+    <label>Operator</label>
+    <description>Comparison applied between the field and the value. Relative Date pairs with a Relative Function such as N_DAYS_AGO for time-based retention.</description>
+    <inlineHelpText>How to compare the field to the value. Use Relative Date with a Relative Function for age-based rules.</inlineHelpText>
+    <type>Picklist</type>
+    <required>false</required>
+    <valueSet>
+        <restricted>true</restricted>
+        <valueSetDefinition>
+            <sorted>false</sorted>
+            <value>
+                <fullName>Equals</fullName>
+                <default>true</default>
+                <label>Equals</label>
+            </value>
+            <value>
+                <fullName>Not Equals</fullName>
+                <default>false</default>
+                <label>Not Equals</label>
+            </value>
+            <value>
+                <fullName>Greater Than</fullName>
+                <default>false</default>
+                <label>Greater Than</label>
+            </value>
+            <value>
+                <fullName>Less Than</fullName>
+                <default>false</default>
+                <label>Less Than</label>
+            </value>
+            <value>
+                <fullName>Greater Or Equal</fullName>
+                <default>false</default>
+                <label>Greater Or Equal</label>
+            </value>
+            <value>
+                <fullName>Less Or Equal</fullName>
+                <default>false</default>
+                <label>Less Or Equal</label>
+            </value>
+            <value>
+                <fullName>Contains</fullName>
+                <default>false</default>
+                <label>Contains</label>
+            </value>
+            <value>
+                <fullName>In</fullName>
+                <default>false</default>
+                <label>In</label>
+            </value>
+            <value>
+                <fullName>Relative Date</fullName>
+                <default>false</default>
+                <label>Relative Date</label>
+            </value>
+        </valueSetDefinition>
+    </valueSet>
+</CustomField>

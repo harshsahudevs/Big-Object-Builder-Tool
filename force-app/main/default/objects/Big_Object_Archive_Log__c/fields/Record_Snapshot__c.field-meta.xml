@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Record_Snapshot__c</fullName>
+    <label>Record Snapshot</label>
+    <description>JSON snapshot of the full source record captured at archive time (field API name, label, type, and value). Lets the viewer render the whole archived record even in orgs where non-index Big Object fields are not SOQL-queryable.</description>
+    <inlineHelpText>Read-only JSON written automatically when a record is archived. Used to display the complete record on the archive viewer.</inlineHelpText>
+    <type>LongTextArea</type>
+    <length>131072</length>
+    <visibleLines>10</visibleLines>
+</CustomField>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Day_Of_Month__c</fullName>
+    <label>Day of Month</label>
+    <description>Day of the month (1-28) the policy runs for a Monthly schedule. Used to build the generated CRON expression; ignored for other schedule types.</description>
+    <inlineHelpText>For Monthly schedules, the day of the month to run (1-28).</inlineHelpText>
+    <type>Number</type>
+    <precision>2</precision>
+    <scale>0</scale>
+</CustomField>

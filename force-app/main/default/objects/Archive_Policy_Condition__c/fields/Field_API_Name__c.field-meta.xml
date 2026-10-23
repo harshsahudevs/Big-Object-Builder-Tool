@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<CustomField xmlns="http://soap.sforce.com/2006/04/metadata">
+    <fullName>Field_API_Name__c</fullName>
+    <label>Field API Name</label>
+    <description>API name of the field on the policy's Target Object that this condition filters on (e.g. Status, CreatedDate, Custom_Field__c).</description>
+    <inlineHelpText>The API name of the field to filter on.</inlineHelpText>
+    <type>Text</type>
+    <length>255</length>
+</CustomField>

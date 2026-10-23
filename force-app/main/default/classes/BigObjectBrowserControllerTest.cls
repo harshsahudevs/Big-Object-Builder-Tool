@@ -151,6 +151,86 @@ private class BigObjectBrowserControllerTest {
     }
 
     @isTest
+    static void unarchiveRecordWithRelated_BlankApiName_Throws() {
+        Test.startTest();
+        try {
+            BigObjectBrowserController.unarchiveRecordWithRelated('', 'KEY-000000');
+            Assert.fail('Expected an AuraHandledException for a blank API name.');
+        } catch (AuraHandledException e) {
+            Assert.isNotNull(e.getMessage(), 'A user-facing message should be present.');
+        }
+        Test.stopTest();
+    }
+
+    @isTest
+    static void unarchiveRecordWithRelated_BlankKey_Throws() {
+        Test.startTest();
+        try {
+            BigObjectBrowserController.unarchiveRecordWithRelated(FIXTURE_BIG_OBJECT, '');
+            Assert.fail('Expected an AuraHandledException for a blank record key.');
+        } catch (AuraHandledException e) {
+            Assert.isNotNull(e.getMessage(), 'A user-facing message should be present.');
+        }
+        Test.stopTest();
+    }
+
+    @isTest
+    static void unarchiveRecordWithRelated_UnresolvableSource_Throws() {
+        // A valid Big Object with no archive-log history and a non-conventional name cannot resolve
+        // its source object, so the engine entry must surface a user-facing error.
+        Test.startTest();
+        try {
+            BigObjectBrowserController.unarchiveRecordWithRelated(FIXTURE_BIG_OBJECT, 'KEY-000000');
+            Assert.fail('Expected an AuraHandledException when the source object cannot be resolved.');
+        } catch (AuraHandledException e) {
+            Assert.isNotNull(e.getMessage(), 'A user-facing message should be present.');
+        }
+        Test.stopTest();
+    }
+
+    @isTest
+    static void getRecordSnapshot_BlankInputs_ReturnsNull() {
+        Test.startTest();
+        Assert.isNull(
+            BigObjectBrowserController.getRecordSnapshot('', 'KEY-1'),
+            'Blank Big Object should yield null.');
+        Assert.isNull(
+            BigObjectBrowserController.getRecordSnapshot(FIXTURE_BIG_OBJECT, ''),
+            'Blank record key should yield null.');
+        Test.stopTest();
+    }
+
+    @isTest
+    static void getRecordSnapshot_ReturnsStoredSnapshot_WhenLogMatches() {
+        String key = 'KEY-ABC|123';
+        String snapshotJson = '{"sourceObject":"Archive_Source__c","fields":[{"name":"Name","label":"Name","type":"string","value":"Acme"}]}';
+        insert new Big_Object_Archive_Log__c(
+            Source_Object__c = 'Archive_Source__c',
+            Source_Record_Id__c = UserInfo.getUserId(),
+            Target_Big_Object__c = FIXTURE_BIG_OBJECT,
+            Record_Key__c = key,
+            Record_Snapshot__c = snapshotJson,
+            Status__c = 'Success',
+            Operation__c = 'Archive'
+        );
+
+        Test.startTest();
+        String result = BigObjectBrowserController.getRecordSnapshot(FIXTURE_BIG_OBJECT, key);
+        Test.stopTest();
+
+        Assert.areEqual(snapshotJson, result, 'The stored snapshot JSON should be returned verbatim.');
+    }
+
+    @isTest
+    static void getRecordSnapshot_ReturnsNull_WhenNoMatch() {
+        Test.startTest();
+        String result = BigObjectBrowserController.getRecordSnapshot(FIXTURE_BIG_OBJECT, 'KEY-does-not-exist');
+        Test.stopTest();
+
+        Assert.isNull(result, 'No matching log row should yield null.');
+    }
+
+    @isTest
     static void unarchiveAll_BlankApiName_Throws() {
         Test.startTest();
         try {

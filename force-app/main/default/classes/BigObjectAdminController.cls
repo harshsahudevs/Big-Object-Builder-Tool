@@ -9,21 +9,25 @@ public with sharing class BigObjectAdminController {
     private static final Long DEFAULT_RECORD_LIMIT = 1000000L;
     private static final String STATUS_SUCCESS = 'Success';
     private static final String STATUS_FAILED = 'Failed';
+    private static final String OPERATION_RESTORE = 'Restore';
 
     // ---- DTOs --------------------------------------------------------------
 
     public class DashboardMetrics {
         @AuraEnabled public Integer totalBigObjects;
         @AuraEnabled public Long totalArchived;
+        @AuraEnabled public Long totalUnarchived;
         @AuraEnabled public Long recordLimit;
         @AuraEnabled public Decimal usagePercent;
         @AuraEnabled public Integer failedCount;
+        @AuraEnabled public Integer unarchiveFailedCount;
         @AuraEnabled public List<ActivityEntry> recentActivity = new List<ActivityEntry>();
     }
 
     public class ActivityEntry {
         @AuraEnabled public String id;
         @AuraEnabled public String name;
+        @AuraEnabled public String operation;
         @AuraEnabled public String sourceObject;
         @AuraEnabled public String targetBigObject;
         @AuraEnabled public String status;
@@ -59,23 +63,42 @@ public with sharing class BigObjectAdminController {
             metrics.totalBigObjects = listBigObjectApiNames().size();
             metrics.recordLimit = getConfiguredRecordLimit();
 
-            Integer totalArchived = [
+            // Archive vs unarchive are both logged with Status Success/Failed; Operation__c tells
+            // them apart. Legacy rows (null Operation) are treated as Archive, so archived counts =
+            // all successes minus restore successes (never negative).
+            Integer successTotal = [
                 SELECT COUNT()
                 FROM Big_Object_Archive_Log__c
                 WHERE Status__c = :STATUS_SUCCESS
                 WITH USER_MODE
             ];
-            metrics.totalArchived = totalArchived;
+            Integer unarchived = [
+                SELECT COUNT()
+                FROM Big_Object_Archive_Log__c
+                WHERE Status__c = :STATUS_SUCCESS AND Operation__c = :OPERATION_RESTORE
+                WITH USER_MODE
+            ];
+            Integer archived = successTotal - unarchived;
+            metrics.totalArchived = archived;
+            metrics.totalUnarchived = unarchived;
             metrics.usagePercent = (metrics.recordLimit == 0)
                 ? 0
-                : (Decimal.valueOf(totalArchived) / metrics.recordLimit * 100).setScale(2);
+                : (Decimal.valueOf(archived) / metrics.recordLimit * 100).setScale(2);
 
-            metrics.failedCount = [
+            Integer failedTotal = [
                 SELECT COUNT()
                 FROM Big_Object_Archive_Log__c
                 WHERE Status__c = :STATUS_FAILED
                 WITH USER_MODE
             ];
+            Integer unarchiveFailed = [
+                SELECT COUNT()
+                FROM Big_Object_Archive_Log__c
+                WHERE Status__c = :STATUS_FAILED AND Operation__c = :OPERATION_RESTORE
+                WITH USER_MODE
+            ];
+            metrics.failedCount = failedTotal - unarchiveFailed;
+            metrics.unarchiveFailedCount = unarchiveFailed;
 
             metrics.recentActivity = getRecentActivity(10);
             return metrics;
@@ -87,7 +110,7 @@ public with sharing class BigObjectAdminController {
     private static List<ActivityEntry> getRecentActivity(Integer rowLimit) {
         List<ActivityEntry> entries = new List<ActivityEntry>();
         for (Big_Object_Archive_Log__c log : [
-            SELECT Name, Source_Object__c, Target_Big_Object__c, Status__c,
+            SELECT Name, Operation__c, Source_Object__c, Target_Big_Object__c, Status__c,
                    Archived_By__r.Name, Archived_Date__c, Error_Message__c
             FROM Big_Object_Archive_Log__c
             WITH USER_MODE
@@ -97,6 +120,7 @@ public with sharing class BigObjectAdminController {
             ActivityEntry entry = new ActivityEntry();
             entry.id = log.Id;
             entry.name = log.Name;
+            entry.operation = String.isBlank(log.Operation__c) ? 'Archive' : log.Operation__c;
             entry.sourceObject = log.Source_Object__c;
             entry.targetBigObject = log.Target_Big_Object__c;
             entry.status = log.Status__c;
